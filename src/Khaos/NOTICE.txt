@@ -1,0 +1,5 @@
+KHA-OS interface headers (KhaosAPI.h, KhaosThemeAPI.h) (c) Deno46, included with permission
+(granted to Mhacks79 on 2026-11-06 for distribution in the QuickLoot IE LE source).
+
+They only declare the KHA-OS plugin contract (v2) and theme snapshot (v1) that
+QuickLoot IE LE implements; KHA-OS itself is not part of this archive.

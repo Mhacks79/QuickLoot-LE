@@ -1,0 +1,31 @@
+{
+  "input": "upstream/QuickLootIE-4.1.3-nexus/Interface/LootMenuIE.swf",
+  "input_sha256": "e2a5fdea66b0a167ca5c9349f37a7d7ab58e904d68700344aefaf6f80ec3b0e7",
+  "input_version": 15,
+  "output": "swf/LootMenuIE.swf",
+  "output_sha256": "f802e78da3716a6a9cd1e008c53b4a8b46154dced93573054ffe1cac9b080c14",
+  "output_version": 10,
+  "tags": 156,
+  "tag_codes": [
+    0,
+    1,
+    2,
+    9,
+    22,
+    26,
+    32,
+    37,
+    39,
+    56,
+    59,
+    69,
+    71,
+    74,
+    78,
+    83
+  ],
+  "body_sha256": "3a6afa18285869feffa3d890e58cca5590a784380f7ea942c1dd1c1292638386",
+  "body_identical": true,
+  "avm2": false,
+  "limitation": "header-only conversion; LE Scaleform playback is not proven by this script"
+}

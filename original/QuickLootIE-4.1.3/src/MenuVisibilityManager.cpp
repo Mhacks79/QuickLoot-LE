@@ -1,0 +1,435 @@
+#include "MenuVisibilityManager.h"
+
+#include "Config/SystemSettings.h"
+#include "Config/UserSettings.h"
+#include "Integrations/DismemberingFramework.h"
+#include "LootMenu.h"
+#include "LootMenuManager.h"
+
+using namespace QuickLoot::Config;
+
+namespace QuickLoot
+{
+#pragma warning(push)
+#pragma warning(disable: 4100)
+
+	RE::TESObjectREFRPtr MenuVisibilityManager::GetContainerObject(RE::ObjectRefHandle ref)
+	{
+		if (auto ptr = ref.get()) {
+			const auto object = ptr->GetObjectReference();
+
+			// For enemies that leave behind an ash pile on death
+			if (object->Is(RE::FormType::Activator)) {
+				return GetContainerObject(ptr->extraList.GetAshPileRef());
+			}
+
+			// For severed limbs from Dismembering Framework
+			if (const auto limbOwner = Integrations::DismemberingFramework::GetLimbOwner(ptr.get())) {
+				return limbOwner->GetHandle().get();
+			}
+
+			if (ptr->HasContainer()) {
+				return ptr;
+			}
+		}
+
+		return nullptr;
+	}
+
+	bool MenuVisibilityManager::IsValidCameraState(RE::CameraState state)
+	{
+		switch (state) {
+		case RE::CameraState::kFirstPerson:
+			return true;
+
+		case RE::CameraState::kThirdPerson:
+			return UserSettings::ShowInThirdPersonView();
+
+		case RE::CameraState::kMount:
+			return UserSettings::ShowWhenMounted();
+
+		default:
+			return false;
+		}
+	}
+
+	const char* MenuVisibilityManager::GetMenuNameSafe(const RE::IMenu* menu)
+	{
+		const auto ui = RE::UI::GetSingleton();
+
+		for (auto [name, entry] : ui->menuMap) {
+			if (menu == entry.menu.get()) {
+				return name.c_str();
+			}
+		}
+
+		return "Unknown";
+	}
+
+	const char* MenuVisibilityManager::FindBlockingMenu()
+	{
+		const auto ui = RE::UI::GetSingleton();
+		std::set<RE::IMenu*> whitelistedMenus{};
+
+		if (const auto lootMenu = ui->GetMenu(LootMenu::MENU_NAME)) {
+			whitelistedMenus.emplace(lootMenu.get());
+		}
+
+		if (const auto cursorMenu = ui->GetMenu(RE::CursorMenu::MENU_NAME)) {
+			whitelistedMenus.emplace(cursorMenu.get());
+		}
+
+		for (auto name : SystemSettings::GetMenuWhitelist()) {
+			if (const auto whitelistedMenu = ui->GetMenu(name)) {
+				whitelistedMenus.emplace(whitelistedMenu.get());
+			}
+		}
+
+		for (auto menu : ui->menuStack) {
+			if (menu->menuFlags & RE::UI_MENU_FLAGS::kAlwaysOpen)
+				continue;
+
+			// IMenu::menuName only exists in VR, so instead of checking whether a menu's
+			// name is on the whitelist we need to actually compare with the instances of
+			// all whitelisted menus.
+			if (whitelistedMenus.contains(menu.get()))
+				continue;
+
+			return GetMenuNameSafe(menu.get());
+		}
+
+		return nullptr;
+	}
+
+	bool MenuVisibilityManager::IsContainerBlacklisted(const RE::TESObjectREFRPtr& container)
+	{
+		const auto& blacklist = SystemSettings::GetContainerBlacklist();
+
+		if (blacklist.contains(container->formID)) {
+			return true;
+		}
+
+		if (const auto baseObj = container->GetBaseObject()) {
+			return blacklist.contains(baseObj->formID);
+		}
+
+		return false;
+	}
+
+	bool MenuVisibilityManager::CanOpen(const RE::TESObjectREFRPtr& container)
+	{
+		const auto player = RE::PlayerCharacter::GetSingleton();
+		const auto cameraState = RE::PlayerCamera::GetSingleton()->currentState;
+
+		if (!container) {
+			return false;
+		}
+
+		if (container->IsLocked()) {
+			logger::debug("LootMenu disabled because container is locked");
+			return false;
+		}
+
+		if (container->IsActivationBlocked()) {
+			logger::debug("LootMenu disabled because container activation is blocked");
+			return false;
+		}
+
+		if (!UserSettings::ShowInCombat() && player->IsInCombat()) {
+			logger::debug("LootMenu disabled because player is in combat");
+			return false;
+		}
+
+		if (!UserSettings::ShowWhenSneaking() && player->IsSneaking()) {
+			logger::debug("LootMenu disabled because player is sneaking");
+			return false;
+		}
+
+		if (player->IsGrabbing()) {
+			logger::debug("LootMenu disabled because player is grabbing something");
+			return false;
+		}
+
+		if (player->HasActorDoingCommand()) {
+			logger::debug("LootMenu disabled because player is commanding a follower");
+			return false;
+		}
+
+		if (RE::MenuControls::GetSingleton()->InBeastForm()) {
+			logger::debug("LootMenu disabled because player is in beast form");
+			return false;
+		}
+
+		if (cameraState && !IsValidCameraState(cameraState->id)) {
+			logger::debug("LootMenu disabled because of camera state ({})", cameraState ? static_cast<int>(cameraState->id) : -1);
+			return false;
+		}
+
+		if (RE::UI::GetSingleton()->GameIsPaused()) {
+			logger::debug("LootMenu disabled because the game is paused");
+			return false;
+		}
+
+		if (IsContainerBlacklisted(container)) {
+			logger::debug("LootMenu disabled because the container is blacklisted ({:08X})", container->formID);
+			return false;
+		}
+
+		if (container->HasKeywordByEditorID("QuickLootIE_Exclude")) {
+			logger::debug("LootMenu disabled because the container is marked with QuickLootIE_Exclude ({:08X})", container->formID);
+			return false;
+		}
+
+		if (const char* blocking = FindBlockingMenu()) {
+			logger::debug("LootMenu disabled because a blocking menu is open ({})", blocking);
+			return false;
+		}
+
+		if (!_disablingMods.empty()) {
+			logger::debug("LootMenu disabled by {}", *_disablingMods.begin());
+			return false;
+		}
+
+		if (const auto actor = container->As<RE::Actor>()) {
+			if (!actor->IsDead()) {
+				logger::debug("LootMenu disabled because the actor isn't dead");
+				return false;
+			}
+
+			if (actor->IsSummoned()) {
+				logger::debug("LootMenu disabled because the actor is summoned");
+				return false;
+			}
+
+			if (!UserSettings::EnableForCorpses()) {
+				logger::debug("LootMenu disabled for corpses");
+				return false;
+			}
+
+			if (!UserSettings::EnableForAnimals() && actor->HasKeywordString("ActorTypeAnimal")) {
+				logger::debug("LootMenu disabled for animals");
+				return false;
+			}
+
+			if (!UserSettings::EnableForDragons() && actor->HasKeywordString("ActorTypeDragon")) {
+				logger::debug("LootMenu disabled for dragons");
+				return false;
+			}
+		} else if (!UserSettings::EnableForContainers()) {
+			logger::debug("LootMenu disabled for containers");
+			return false;
+		}
+
+		return true;
+	}
+
+	void MenuVisibilityManager::RefreshOpenState()
+	{
+		PROFILE_SCOPE;
+
+		// Prevent reentry
+		static bool refreshing = false;
+		if (refreshing) {
+			return;
+		}
+		refreshing = true;
+		struct RefreshGuard
+		{
+			~RefreshGuard() { refreshing = false; }
+		} refreshGuard;
+
+		// Don't refresh while the console is open to work around the missing cursor bug
+		// (any menu events while the console is open cause the cursor to disappear)
+		if (RE::UI::GetSingleton()->IsMenuOpen(RE::Console::MENU_NAME)) {
+			if (LOG_EVENTS) {
+				logger::debug("Skipping RefreshOpenState because the console is open");
+			}
+			return;
+		}
+
+		const auto container = GetContainerObject(_forcedContainer ? _forcedContainer : _focusedRef);
+		const auto canOpen = _forcedContainer ? container != nullptr : CanOpen(container);
+		if (canOpen) {
+			if (LOG_EVENTS) {
+				if (LootMenuManager::IsShowing()) {
+					logger::debug("RefreshOpenState: Menu staying open");
+				} else {
+					logger::debug("RefreshOpenState: Menu opening");
+				}
+			}
+
+			_currentContainer = container->GetHandle();
+			LootMenuManager::RequestShow(_currentContainer);
+		} else {
+			if (LOG_EVENTS) {
+				if (LootMenuManager::IsShowing()) {
+					logger::debug("RefreshOpenState: Menu closing");
+				} else {
+					logger::debug("RefreshOpenState: Menu staying closed");
+				}
+			}
+
+			_currentContainer.reset();
+			LootMenuManager::RequestHide();
+		}
+	}
+
+	void MenuVisibilityManager::RefreshInventory()
+	{
+		LootMenuManager::RequestRefresh(RefreshFlags::kInventory);
+	}
+
+	void MenuVisibilityManager::DisableLootMenu(const std::string& modName)
+	{
+		_disablingMods.insert(modName);
+		RefreshOpenState();
+	}
+
+	void MenuVisibilityManager::EnableLootMenu(const std::string& modName)
+	{
+		_disablingMods.erase(modName);
+		RefreshOpenState();
+	}
+
+	void MenuVisibilityManager::OnCameraStateChanged(RE::CameraState state)
+	{
+		if (LOG_EVENTS) {
+			logger::debug("");
+			logger::debug("OnCameraStateChanged: {}", std::to_underlying(state));
+		}
+
+		RefreshOpenState();
+	}
+
+	void MenuVisibilityManager::OnCombatStateChanged(RE::ACTOR_COMBAT_STATE state)
+	{
+		if (LOG_EVENTS) {
+			logger::debug("");
+			logger::debug("OnCombatStateChanged: {}", std::to_underlying(state));
+		}
+
+		RefreshOpenState();
+	}
+
+	void MenuVisibilityManager::OnContainerChanged(RE::FormID container)
+	{
+		if (LOG_EVENTS) {
+			logger::debug("");
+			logger::debug("OnContainerChanged: {:08X}", container);
+		}
+
+		if (_currentContainer.get() && container == _currentContainer.get()->GetFormID()) {
+			RefreshInventory();
+		}
+	}
+
+	void MenuVisibilityManager::OnCrosshairRefChanged(const RE::ObjectRefHandle& ref)
+	{
+		if (LOG_EVENTS) {
+			logger::debug("");
+			logger::debug("OnCrosshairRefChanged: {:08X}", ref.get() ? ref.get()->GetFormID() : 0);
+		}
+
+		if (ref != _focusedRef) {
+			_focusedRef = ref;
+			RefreshOpenState();
+		}
+	}
+
+	void MenuVisibilityManager::OnGrabStateChanged()
+	{
+		if (LOG_EVENTS) {
+			logger::debug("");
+			logger::debug("OnGrabStateChanged");
+		}
+
+		RefreshOpenState();
+	}
+
+	void MenuVisibilityManager::OnLifeStateChanged(RE::Actor& actor)
+	{
+		if (LOG_EVENTS) {
+			logger::debug("");
+			logger::debug("OnLifeStateChanged: {:08X}", actor.GetFormID());
+		}
+
+		if (actor.GetHandle() == _focusedRef) {
+			RefreshOpenState();
+		}
+	}
+
+	void MenuVisibilityManager::OnLockChanged(RE::TESObjectREFR& container)
+	{
+		if (LOG_EVENTS) {
+			logger::debug("");
+			logger::debug("OnLockChanged: {:08X}", container.GetFormID());
+		}
+
+		if (UserSettings::ShowWhenUnlocked() && container.GetHandle() == _focusedRef) {
+			RefreshOpenState();
+		}
+	}
+
+	void MenuVisibilityManager::OnMenuOpenClose(bool opening, const RE::BSFixedString& menuName)
+	{
+		if (LOG_EVENTS) {
+			logger::debug("");
+			logger::debug("OnMenuOpenClose: {} {}", opening ? "Open" : "Close", std::string_view(menuName));
+		}
+
+		// Always ignore events related to the loot menu to avoid feedback loops
+		if (menuName == LootMenu::MENU_NAME) {
+			return;
+		}
+
+		if (!opening && menuName == RE::LockpickingMenu::MENU_NAME && !UserSettings::ShowWhenUnlocked()) {
+			// Without this the activation prompt will continue to show the container as locked
+			RE::PlayerCharacter::GetSingleton()->UpdateCrosshairs();
+
+			// Don't refresh open state when ShowWhenUnlocked is false
+			return;
+		}
+
+		if (!opening && menuName == RE::JournalMenu::MENU_NAME) {
+			UserSettings::Update();
+			SystemSettings::Update();
+		}
+
+		RefreshOpenState();
+	}
+
+	void MenuVisibilityManager::OnSneakStateChanged()
+	{
+		if (LOG_EVENTS) {
+			logger::debug("");
+			logger::debug("OnSneakStateChanged");
+		}
+
+		RefreshOpenState();
+	}
+
+	void MenuVisibilityManager::SetForcedContainer(RE::ObjectRefHandle container)
+	{
+		_forcedContainer = std::move(container);
+		RefreshOpenState();
+	}
+
+	bool MenuVisibilityManager::IsForcedContainer(const RE::ObjectRefHandle& container)
+	{
+		if (!_forcedContainer || !container) {
+			return false;
+		}
+
+		if (_forcedContainer == container) {
+			return true;
+		}
+
+		if (const auto resolvedForcedContainer = GetContainerObject(_forcedContainer)) {
+			return resolvedForcedContainer->GetHandle() == container;
+		}
+
+		return false;
+	}
+
+#pragma warning(pop)
+}

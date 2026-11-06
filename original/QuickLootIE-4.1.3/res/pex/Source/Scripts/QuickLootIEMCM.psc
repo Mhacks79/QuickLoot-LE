@@ -1,0 +1,1926 @@
+scriptname QuickLootIEMCM extends SKI_ConfigBase conditional
+
+import QuickLootIENative
+import PapyrusUtil
+import StringUtil
+import Utility
+import Debug
+
+;---------------------------------------------------
+;-- Properties and Fields --------------------------
+;---------------------------------------------------
+
+bool property IsInitialLoad = true auto hidden
+
+string property ConfigPath = "../QuickLootIE/DefaultConfig.json" auto hidden
+string property SortPresetPath = "../QuickLootIE/SortPresets/" auto hidden
+string property ControlPresetPath = "../QuickLootIE/ControlPresets/" auto hidden
+
+; General > Behavior Settings
+bool property QLIE_ShowInCombat = true auto hidden
+bool property QLIE_ShowWhenEmpty = false auto hidden
+bool property QLIE_ShowWhenSneaking = true auto hidden
+bool property QLIE_ShowWhenUnlocked = true auto hidden
+bool property QLIE_ShowInThirdPerson = true auto hidden
+bool property QLIE_ShowWhenMounted = false auto hidden
+bool property QLIE_EnableForContainers = true auto hidden
+bool property QLIE_EnableForCorpses = true auto hidden
+bool property QLIE_EnableForAnimals = true auto hidden
+bool property QLIE_EnableForDragons = true auto hidden
+bool property QLIE_BreakInvisibility = true auto hidden
+bool property QLIE_PlayScrollSound = true auto hidden
+
+; Display > Window Settings
+int property QLIE_WindowOffsetX = 100 auto hidden
+int property QLIE_WindowOffsetY = -200 auto hidden
+float property QLIE_WindowScale = 1.0 auto hidden
+int property QLIE_WindowAnchor = 0 auto hidden
+int property QLIE_WindowMinLines = 0 auto hidden
+int property QLIE_WindowMaxLines = 7 auto hidden
+float property QLIE_WindowOpacityNormal = 1.0 auto hidden
+float property QLIE_WindowOpacityEmpty = 0.3 auto hidden
+
+string[] WindowAnchorNames
+
+; Display > Icon Settings
+bool property QLIE_ShowIconItem = true auto hidden
+bool property QLIE_ShowIconBest = false auto hidden
+bool property QLIE_ShowIconRead = true auto hidden
+bool property QLIE_ShowIconStolen = true auto hidden
+bool property QLIE_ShowIconEnchanted = true auto hidden
+bool property QLIE_ShowIconEnchantedKnown = true auto hidden
+bool property QLIE_ShowIconEnchantedSpecial = true auto hidden
+
+; Display > Info Columns
+string[] property QLIE_InfoColumns auto hidden
+
+int InfoColumnPresetIndex = 0
+string[] InfoColumnPresetNames
+string[] InfoColumnPresetStrings
+
+; Sorting
+string[] property QLIE_SortRulesActive auto hidden
+
+string[] SortRulesAvailable			; Options available for insertion
+int[] SortRulesActiveIds			; Option IDs for each index in the active list
+int SortSelectedRuleIndex = -1		; Index of the selected option in the active list
+string[] SortPresetNames			; Load preset dropdown values
+int SortPredefinedPresetCount		; How many presets are defined in the dll
+
+; Controls
+int property QLIE_KeybindingUse = 18 auto hidden
+int property QLIE_KeybindingTake = 18 auto hidden
+int property QLIE_KeybindingTakeAll = 19 auto hidden
+int property QLIE_KeybindingTransfer = 16 auto hidden
+int property QLIE_KeybindingDisable = -1 auto hidden
+int property QLIE_KeybindingEnable = -1 auto hidden
+
+int property QLIE_KeybindingUseModifier = 42 auto hidden
+int property QLIE_KeybindingTakeModifier = -1 auto hidden
+int property QLIE_KeybindingTakeAllModifier = -1 auto hidden
+int property QLIE_KeybindingTransferModifier = -1 auto hidden
+int property QLIE_KeybindingDisableModifier = -1 auto hidden
+int property QLIE_KeybindingEnableModifier = -1 auto hidden
+
+int property QLIE_KeybindingUseGamepad = 279 auto hidden
+int property QLIE_KeybindingTakeGamepad = 276 auto hidden
+int property QLIE_KeybindingTakeAllGamepad = 278 auto hidden
+int property QLIE_KeybindingTransferGamepad = 271 auto hidden
+int property QLIE_KeybindingDisableGamepad = -1 auto hidden
+int property QLIE_KeybindingEnableGamepad = -1 auto hidden
+
+int property QLIE_KeybindingUseGamepadModifier = -1 auto hidden
+int property QLIE_KeybindingTakeGamepadModifier = -1 auto hidden
+int property QLIE_KeybindingTakeAllGamepadModifier = -1 auto hidden
+int property QLIE_KeybindingTransferGamepadModifier = -1 auto hidden
+int property QLIE_KeybindingDisableGamepadModifier = -1 auto hidden
+int property QLIE_KeybindingEnableGamepadModifier = -1 auto hidden
+
+string[] ControlPresetNames
+int ControlPredefinedPresetCount
+bool GamepadMode
+
+; Compatibility > Artifact Icons
+bool property QLIE_ShowIconArtifactNew = true auto hidden
+bool property QLIE_ShowIconArtifactCarried = true auto hidden
+bool property QLIE_ShowIconArtifactDisplayed = true auto hidden
+
+; Compatibility > Completionist Icons
+bool property QLIE_ShowIconCompletionistNeeded = true auto hidden
+bool property QLIE_ShowIconCompletionistCollected = true auto hidden
+bool property QLIE_ShowIconCompletionistDisplayable = true auto hidden
+bool property QLIE_ShowIconCompletionistDisplayed = true auto hidden
+bool property QLIE_ShowIconCompletionistOccupied = true auto hidden
+
+;---------------------------------------------------
+;-- SkyUI Events -----------------------------------
+;---------------------------------------------------
+
+event OnConfigInit()
+	LogWithPlugin("OnConfigInit")
+
+	if IsInitialLoad
+		Initialize()
+		ImportSettings(true)
+		IsInitialLoad = false
+	endif
+endevent
+
+event OnConfigOpen()
+	LogWithPlugin("OnConfigOpen")
+
+	Initialize()
+
+	Pages = new string[5]
+	Pages[0] = "$qlie_GeneralPage"
+	Pages[1] = "$qlie_DisplayPage"
+	Pages[2] = "$qlie_SortingPage"
+	Pages[3] = "$qlie_ControlsPage"
+	Pages[4] = "$qlie_CompatibilityPage"
+endevent
+
+event OnPageReset(string page)
+	LogWithPlugin("OnPageReset " + page)
+
+	; Credits page
+    if (page == "")
+		LoadCustomContent("QuickLootIE_splash.swf")
+		return
+	endif
+
+	UnloadCustomContent()
+
+    if (page == "$qlie_GeneralPage")
+		BuildGeneralPage()
+		return
+	endif
+
+    if (page == "$qlie_DisplayPage")
+		BuildDisplayPage()
+		return
+	endif
+
+    if (page == "$qlie_SortingPage")
+		BuildSortingPage()
+		return
+	endif
+
+    if (page == "$qlie_ControlsPage")
+		BuildControlsPage()
+		return
+	endif
+
+    if (page == "$qlie_CompatibilityPage")
+		BuildCompatibilityPage()
+		return
+	endif
+endevent
+
+;---------------------------------------------------
+;-- Initialization ---------------------------------
+;---------------------------------------------------
+
+function Initialize()
+	InitWindowAnchorNames()
+	InitInfoColumnPresetData()
+	InitSortPresetList()
+	InitSortRuleLists()
+	InitControlPresets()
+
+	GamepadMode = Game.UsingGamepad()
+endfunction
+
+function InitWindowAnchorNames()
+	WindowAnchorNames = new string[9]
+	WindowAnchorNames[0] = "$qlie_WindowAnchor_name0"
+	WindowAnchorNames[1] = "$qlie_WindowAnchor_name1"
+	WindowAnchorNames[2] = "$qlie_WindowAnchor_name2"
+	WindowAnchorNames[3] = "$qlie_WindowAnchor_name3"
+	WindowAnchorNames[4] = "$qlie_WindowAnchor_name4"
+	WindowAnchorNames[5] = "$qlie_WindowAnchor_name5"
+	WindowAnchorNames[6] = "$qlie_WindowAnchor_name6"
+	WindowAnchorNames[7] = "$qlie_WindowAnchor_name7"
+	WindowAnchorNames[8] = "$qlie_WindowAnchor_name8"
+endfunction
+
+function InitInfoColumnPresetData()
+	InfoColumnPresetNames = new string[4]
+	InfoColumnPresetNames[0] = "$qlie_InfoColumnPreset_v_w_vpw"
+	InfoColumnPresetNames[1] = "$qlie_InfoColumnPreset_v_vpw_w"
+	InfoColumnPresetNames[2] = "$qlie_InfoColumnPreset_v_w"
+	InfoColumnPresetNames[3] = "$qlie_InfoColumnPreset_none"
+
+	InfoColumnPresetStrings = new string[4]
+	InfoColumnPresetStrings[0] = "value,weight,valuePerWeight"
+	InfoColumnPresetStrings[1] = "value,valuePerWeight,weight"
+	InfoColumnPresetStrings[2] = "value,weight"
+	InfoColumnPresetStrings[3] = ""
+endfunction
+
+function InitSortPresetList()
+	; Grab presets from the DLL.
+	SortPresetNames = GetSortingPresets()
+	SortPredefinedPresetCount = SortPresetNames.Length
+
+	; Grab custom presets from the JSON Path
+	string[] customPresets = JsonUtil.JsonInFolder(SortPresetPath)
+	if customPresets.Length > 0
+		SortPresetNames = AddPresetsToArray(SortPresetNames, customPresets)
+	endif
+endfunction
+
+function InitSortRuleLists(bool forceReset = false)
+	; Get Default List
+	SortRulesAvailable = GetSortingPreset(1)
+
+	; Reset to default on first load or if reset button is pressed.
+	if forceReset || QLIE_SortRulesActive.Length == 0
+		QLIE_SortRulesActive = SortRulesAvailable
+	endif
+
+	; Remove entries from available list if they are in the active list
+	SortRulesAvailable = FormatSortOptionsList(SortRulesAvailable, QLIE_SortRulesActive)
+	SortRulesActiveIds = Utility.CreateIntArray(QLIE_SortRulesActive.Length, -1)
+endfunction
+
+function InitControlPresets()
+	ControlPresetNames = new string[2]
+	ControlPresetNames[0] = "Default (E, R, Q)"
+	ControlPresetNames[1] = "Fallout 4 Style (E, Shift+E, R)"
+	ControlPredefinedPresetCount = ControlPresetNames.Length
+
+	ControlPresetNames = MergeStringArray(ControlPresetNames, JsonUtil.JsonInFolder(ControlPresetPath))
+endfunction
+
+;---------------------------------------------------
+;-- Global Events ----------------------------------
+;---------------------------------------------------
+
+event OnHighlightST()
+	string currentState = GetState()
+
+	if Substring(currentState, 0, 6) != "state_"
+		SetInfoText("")
+		return
+	endif
+
+	SetInfoText("$qlie_" + Substring(currentState, 6) + "_info")
+endevent
+
+event OnOptionHighlight(int optionID)
+	; Check whether the selection option is one of the dynamically generated sort options
+	int index = SortRulesActiveIds.Find(optionID)
+	if index < 0 || index >= QLIE_SortRulesActive.Length
+		return
+	endif
+
+	SetInfoText("$qlie_SortRule_info")
+endevent
+
+event OnOptionSelect(int optionID)
+	; Check whether the selection option is one of the dynamically generated sort options
+	int index = SortRulesActiveIds.Find(optionID)
+	if index < 0 || index >= QLIE_SortRulesActive.Length
+		return
+	endif
+
+	if index == SortSelectedRuleIndex
+		SortSelectedRuleIndex = -1
+	else
+		SortSelectedRuleIndex = index
+	endif
+
+	ForcePageReset()
+endevent
+
+;---------------------------------------------------
+;-- Page Setup -------------------------------------
+;---------------------------------------------------
+
+function BuildGeneralPage()
+	SetCursorFillMode(TOP_TO_BOTTOM)
+
+	SetCursorPosition(0)
+	AddHeaderOption("$qlie_BehaviorSettingsHeader")
+	AddTextOptionST("state_ShowInCombat",			"$qlie_ShowInCombat_text",			GetEnabledStatusText(QLIE_ShowInCombat))
+	AddTextOptionST("state_ShowWhenEmpty",			"$qlie_ShowWhenEmpty_text",			GetEnabledStatusText(QLIE_ShowWhenEmpty))
+	AddTextOptionST("state_ShowWhenSneaking",		"$qlie_ShowWhenSneaking_text",		GetEnabledStatusText(QLIE_ShowWhenSneaking))
+	AddTextOptionST("state_ShowWhenUnlocked",		"$qlie_ShowWhenUnlocked_text",		GetEnabledStatusText(QLIE_ShowWhenUnlocked))
+	AddTextOptionST("state_ShowInThirdPerson",		"$qlie_ShowInThirdPerson_text",		GetEnabledStatusText(QLIE_ShowInThirdPerson))
+	AddTextOptionST("state_ShowWhenMounted",		"$qlie_ShowWhenMounted_text",		GetEnabledStatusText(QLIE_ShowWhenMounted))
+	AddTextOptionST("state_EnableForContainers",	"$qlie_EnableForContainers_text",	GetEnabledStatusText(QLIE_EnableForContainers))
+	AddTextOptionST("state_EnableForCorpses",		"$qlie_EnableForCorpses_text",		GetEnabledStatusText(QLIE_EnableForCorpses))
+	AddTextOptionST("state_EnableForAnimals",		"$qlie_EnableForAnimals_text",		GetEnabledStatusText(QLIE_EnableForAnimals))
+	AddTextOptionST("state_EnableForDragons",		"$qlie_EnableForDragons_text",		GetEnabledStatusText(QLIE_EnableForDragons))
+	AddTextOptionST("state_BreakInvisibility",		"$qlie_BreakInvisibility_text",		GetEnabledStatusText(QLIE_BreakInvisibility))
+	AddTextOptionST("state_PlayScrollSound",		"$qlie_PlayScrollSound_text",		GetEnabledStatusText(QLIE_PlayScrollSound))
+
+	SetCursorPosition(1)
+	AddHeaderOption("$qlie_ModInformationHeader")
+	AddTextOption("", "$qlie_ModName")
+	;AddTextOption("", "$qlie_Author1")
+	;AddTextOption("", "$qlie_Author2")
+
+	AddTextOption("", "$qlie_ModVersion{" + ((self as Quest) as QuickLootIEMaintenance).CurrentVersionString + "}")
+	AddTextOption("", "$qlie_DllVersion{" + QuickLootIENative.GetDllVersion() + "}")
+	AddTextOption("", "$qlie_SwfVersion{" + QuickLootIENative.GetSwfVersion() + "}")
+	AddEmptyOption()
+
+	if PapyrusUtil.GetScriptVersion() > 31
+		AddHeaderOption("$qlie_ManageSettingsHeader")
+		AddTextOptionST("state_SettingsReset",	"", "$qlie_SettingsReset_text")
+		AddTextOptionST("state_SettingsExport",	"", "$qlie_SettingsExport_text")
+		AddTextOptionST("state_SettingsImport",	"", "$qlie_SettingsImport_text")
+	else
+		AddHeaderOption("$qlie_ManageSettingsHeader")
+		AddTextOptionST("state_SettingsReset",	"", "$qlie_SettingsReset_text")
+		AddTextOptionST("state_SettingsExport",	"", "$qlie_SettingsExport_unavailable", OPTION_FLAG_DISABLED)
+		AddTextOptionST("state_SettingsImport",	"", "$qlie_SettingsImport_unavailable", OPTION_FLAG_DISABLED)
+	endif
+endfunction
+
+function BuildDisplayPage()
+	SetCursorFillMode(TOP_TO_BOTTOM)
+
+	SetCursorPosition(0)
+	AddHeaderOption("$qlie_WindowSettingsHeader")
+	AddMenuOptionST("state_WindowAnchor",				"$qlie_WindowAnchor_text",				WindowAnchorNames[QLIE_WindowAnchor])
+	AddSliderOptionST("state_WindowOffsetX",			"$qlie_WindowOffsetX_text",				QLIE_WindowOffsetX, "{0}")
+	AddSliderOptionST("state_WindowOffsetY",			"$qlie_WindowOffsetY_text",				QLIE_WindowOffsetY, "{0}")
+	AddSliderOptionST("state_WindowScale",				"$qlie_WindowScale_text",				QLIE_WindowScale, "{1}")
+	AddSliderOptionST("state_WindowOpacityNormal",		"$qlie_WindowOpacityNormal_text",		QLIE_WindowOpacityNormal, "{1}")
+	AddSliderOptionST("state_WindowOpacityEmpty",		"$qlie_WindowOpacityEmpty_text",		QLIE_WindowOpacityEmpty, "{1}")
+	AddSliderOptionST("state_WindowMinLines",			"$qlie_WindowMinLines_text",			QLIE_WindowMinLines, "{0}")
+	AddSliderOptionST("state_WindowMaxLines",			"$qlie_WindowMaxLines_text",			QLIE_WindowMaxLines, "{0}")
+
+	SetCursorPosition(1)
+	AddHeaderOption("$qlie_IconSettingsHeader")
+	AddTextOptionST("state_ShowIconItem",				"$qlie_ShowIconItem_text",				GetEnabledStatusText(QLIE_ShowIconItem))
+	AddTextOptionST("state_ShowIconBest",				"$qlie_ShowIconBest_text",				GetEnabledStatusText(QLIE_ShowIconBest))
+	AddTextOptionST("state_ShowIconRead",				"$qlie_ShowIconRead_text",				GetEnabledStatusText(QLIE_ShowIconRead))
+	AddTextOptionST("state_ShowIconStolen",				"$qlie_ShowIconStolen_text",			GetEnabledStatusText(QLIE_ShowIconStolen))
+	AddTextOptionST("state_ShowIconEnchanted",			"$qlie_ShowIconEnchanted_text",			GetEnabledStatusText(QLIE_ShowIconEnchanted))
+	AddTextOptionST("state_ShowIconEnchantedKnown",		"$qlie_ShowIconEnchantedKnown_text",	GetEnabledStatusText(QLIE_ShowIconEnchantedKnown))
+	AddTextOptionST("state_ShowIconEnchantedSpecial",	"$qlie_ShowIconEnchantedSpecial_text",	GetEnabledStatusText(QLIE_ShowIconEnchantedSpecial))
+
+	AddEmptyOption()
+	AddHeaderOption("$qlie_InfoColumnLayoutHeader")
+	if InfoColumnPresetIndex < 0
+		AddMenuOptionST("state_InfoColumnPreset",		"$qlie_InfoColumnPreset_text",			"$qlie_InfoColumnPreset_custom")
+	else
+		AddMenuOptionST("state_InfoColumnPreset",		"$qlie_InfoColumnPreset_text",			InfoColumnPresetNames[InfoColumnPresetIndex])
+	endif
+	AddInputOptionST("state_InfoColumnString",			"$qlie_InfoColumnString_text",			"$qlie_InfoColumnString_button")
+endfunction
+
+function BuildSortingPage()
+	InitSortRuleLists()
+
+	SetCursorFillMode(TOP_TO_BOTTOM)
+
+	SetCursorPosition(0)
+	AddHeaderOption("$qlie_SortRulesHeader")
+
+	; Dynamically generate a list of options and save their ids in SortRulesActiveIds.
+	int i = 0
+	while i < QLIE_SortRulesActive.Length
+		if i == SortSelectedRuleIndex
+			SortRulesActiveIds[i] = AddTextOption("$qlie_SortRule_selected{" + QLIE_SortRulesActive[i] + "}", "&lt;&lt;&lt;")
+		else
+			SortRulesActiveIds[i] = AddTextOption(QLIE_SortRulesActive[i], "")
+		endif
+
+		i += 1
+	endwhile
+
+	SetCursorPosition(1)
+	AddHeaderOption("$qlie_SortOptionsHeader")
+	if SortSelectedRuleIndex >= 0 && SortSelectedRuleIndex < QLIE_SortRulesActive.Length
+		string selectedRuleName = QLIE_SortRulesActive[SortSelectedRuleIndex]
+		AddMenuOptionST("state_SortInsert",		"", "$qlie_SortInsert_text{" + selectedRuleName + "}", (SortRulesAvailable.Length == 0) as int)
+		AddTextOptionST("state_SortRemove",		"", "$qlie_SortRemove_text{" + selectedRuleName + "}")
+	else
+		AddMenuOptionST("state_SortInsert",		"", "$qlie_SortInsert_text", (SortRulesAvailable.Length == 0) as int)
+		AddTextOptionST("state_SortRemove",		"", "$qlie_SortRemove_text", OPTION_FLAG_DISABLED)
+	endif
+
+	AddEmptyOption()
+	AddHeaderOption("$qlie_SortPresetsHeader")
+	AddTextOptionST("state_SortReset",			"", "$qlie_SortReset_text")
+	AddInputOptionST("state_SortPresetSave", 	"", "$qlie_SortPresetSave_text")
+	AddMenuOptionST("state_SortPresetLoad",		"", "$qlie_SortPresetLoad_text")
+endfunction
+
+function BuildControlsPage()
+	SetCursorFillMode(LEFT_TO_RIGHT)
+
+	SetCursorPosition(0)
+	AddHeaderOption("$qlie_KeybindingsHeader")
+	AddHeaderOption("")
+
+	if GamepadMode
+		AddKeyMapOptionST("state_ControlsTake",				"$qlie_ControlsTake_text", QLIE_KeybindingTakeGamepad, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsTakeModifier",		"$qlie_ControlsModifier_text", QLIE_KeybindingTakeGamepadModifier, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsTakeAll",			"$qlie_ControlsTakeAll_text", QLIE_KeybindingTakeAllGamepad, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsTakeAllModifier",	"$qlie_ControlsModifier_text", QLIE_KeybindingTakeAllGamepadModifier, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsTransfer",			"$qlie_ControlsTransfer_text", QLIE_KeybindingTransferGamepad, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsTransferModifier",	"$qlie_ControlsModifier_text", QLIE_KeybindingTransferGamepadModifier, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsUse",				"$qlie_ControlsUse_text", QLIE_KeybindingUseGamepad, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsUseModifier",		"$qlie_ControlsModifier_text", QLIE_KeybindingUseGamepadModifier, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsDisable",			"$qlie_ControlsDisable_text", QLIE_KeybindingDisableGamepad, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsDisableModifier",	"$qlie_ControlsModifier_text", QLIE_KeybindingDisableGamepadModifier, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsEnable",			"$qlie_ControlsEnable_text", QLIE_KeybindingEnableGamepad, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsEnableModifier",	"$qlie_ControlsModifier_text", QLIE_KeybindingEnableGamepadModifier, OPTION_FLAG_WITH_UNMAP)
+	else
+		AddKeyMapOptionST("state_ControlsTake",				"$qlie_ControlsTake_text", QLIE_KeybindingTake, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsTakeModifier",		"$qlie_ControlsModifier_text", QLIE_KeybindingTakeModifier, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsTakeAll",			"$qlie_ControlsTakeAll_text", QLIE_KeybindingTakeAll, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsTakeAllModifier",	"$qlie_ControlsModifier_text", QLIE_KeybindingTakeAllModifier, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsTransfer",			"$qlie_ControlsTransfer_text", QLIE_KeybindingTransfer, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsTransferModifier",	"$qlie_ControlsModifier_text", QLIE_KeybindingTransferModifier, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsUse",				"$qlie_ControlsUse_text", QLIE_KeybindingUse, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsUseModifier",		"$qlie_ControlsModifier_text", QLIE_KeybindingUseModifier, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsDisable",			"$qlie_ControlsDisable_text", QLIE_KeybindingDisable, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsDisableModifier",	"$qlie_ControlsModifier_text", QLIE_KeybindingDisableModifier, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsEnable",			"$qlie_ControlsEnable_text", QLIE_KeybindingEnable, OPTION_FLAG_WITH_UNMAP)
+		AddKeyMapOptionST("state_ControlsEnableModifier",	"$qlie_ControlsModifier_text", QLIE_KeybindingEnableModifier, OPTION_FLAG_WITH_UNMAP)
+	endif
+
+	SetCursorFillMode(TOP_TO_BOTTOM)
+	SetCursorPosition(15)
+	AddHeaderOption("$qlie_ControlPresetsHeader")
+	AddTextOptionST("state_ControlReset",				"", "$qlie_ControlReset_text")
+
+	if PapyrusUtil.GetScriptVersion() > 31
+		AddInputOptionST("state_ControlPresetSave",		"", "$qlie_ControlPresetSave_text")
+		AddMenuOptionST("state_ControlPresetLoad",		"", "$qlie_ControlPresetLoad_text")
+	else
+		AddInputOptionST("state_ControlPresetSave",		"", "$qlie_ControlPresetSave_text", OPTION_FLAG_DISABLED)
+		AddMenuOptionST("state_ControlPresetLoad",		"", "$qlie_ControlPresetLoad_text", OPTION_FLAG_DISABLED)
+	endif
+endfunction
+
+function BuildCompatibilityPage()
+	SetCursorFillMode(TOP_TO_BOTTOM)
+
+	bool hasArtifacts = Game.GetModByName("DBM_RelicNotifications.esp") != 255 || Game.GetModByName("Artifact Tracker.esp") != 255
+	bool hasCompletionist = Game.GetModByName("Completionist.esp") != 255
+
+	SetCursorPosition(0)
+	AddHeaderOption("$qlie_ArtifactIconsHeader")
+	AddTextOptionST("state_ShowIconArtifactNew",				"$qlie_ShowIconArtifactNew_text",				GetEnabledStatusText(QLIE_ShowIconArtifactNew, hasArtifacts), (!hasArtifacts) as int)
+	AddTextOptionST("state_ShowIconArtifactCarried",			"$qlie_ShowIconArtifactCarried_text",			GetEnabledStatusText(QLIE_ShowIconArtifactCarried, hasArtifacts), (!hasArtifacts) as int)
+	AddTextOptionST("state_ShowIconArtifactDisplayed",			"$qlie_ShowIconArtifactDisplayed_text",			GetEnabledStatusText(QLIE_ShowIconArtifactDisplayed, hasArtifacts), (!hasArtifacts) as int)
+
+	SetCursorPosition(1)
+	AddHeaderOption("$qlie_CompletionistIconsHeader")
+	AddTextOptionST("state_ShowIconCompletionistNeeded",		"$qlie_ShowIconCompletionistNeeded_text",		GetEnabledStatusText(QLIE_ShowIconCompletionistNeeded, hasCompletionist), (!hasCompletionist) as int)
+	AddTextOptionST("state_ShowIconCompletionistCollected",		"$qlie_ShowIconCompletionistCollected_text",	GetEnabledStatusText(QLIE_ShowIconCompletionistCollected, hasCompletionist), (!hasCompletionist) as int)
+	AddTextOptionST("state_ShowIconCompletionistDisplayable",	"$qlie_ShowIconCompletionistDisplayable_text",	GetEnabledStatusText(QLIE_ShowIconCompletionistDisplayable, hasCompletionist), (!hasCompletionist) as int)
+	AddTextOptionST("state_ShowIconCompletionistDisplayed",		"$qlie_ShowIconCompletionistDisplayed_text",	GetEnabledStatusText(QLIE_ShowIconCompletionistDisplayed, hasCompletionist), (!hasCompletionist) as int)
+	AddTextOptionST("state_ShowIconCompletionistOccupied",		"$qlie_ShowIconCompletionistOccupied_text",		GetEnabledStatusText(QLIE_ShowIconCompletionistOccupied, hasCompletionist), (!hasCompletionist) as int)
+endfunction
+
+;---------------------------------------------------
+;-- Helper Functions -------------------------------
+;---------------------------------------------------
+
+string function GetEnabledStatusText(bool enabled, bool installed = true)
+	if !installed
+		return "$qlie_NotInstalled"
+	endif
+
+	if enabled
+		return "$qlie_Enabled"
+	endif
+
+	return "$qlie_Disabled"
+endfunction
+
+function ShowMsg(string message)
+	ShowMessage(message, false, "$qlie_ConfirmY", "$qlie_ConfirmN")
+endfunction
+
+;---------------------------------------------------
+;-- General > Manage Settings ----------------------
+;---------------------------------------------------
+
+state state_SettingsReset
+	event OnSelectST()
+		SetTextOptionValueST("$qlie_SettingsReset_inprogress")
+		ResetSettings()
+		SetTextOptionValueST("$qlie_SettingsReset_text")
+	endevent
+endstate
+
+state state_SettingsExport
+	event OnSelectST()
+		SetTextOptionValueST("$qlie_SettingsExport_inprogress")
+		ExportSettings()
+		SetTextOptionValueST("$qlie_SettingsExport_text")
+	endevent
+endstate
+
+state state_SettingsImport
+	event OnSelectST()
+		SetTextOptionValueST("$qlie_SettingsImport_inprogress")
+		ImportSettings(false)
+		SetTextOptionValueST("$qlie_SettingsImport_text")
+	endevent
+endstate
+
+function ResetSettings()
+	LogWithPlugin("ResetSettings")
+
+	ResetSettings_General()
+	ResetSettings_Display()
+	ResetSettings_Sorting()
+	ResetSettings_Controls()
+	ResetSettings_Compatibility()
+
+	if IsInMenuMode()
+		ForcePageReset()
+	endif
+endfunction
+
+function ExportSettings()
+	LogWithPlugin("ExportSettings")
+
+	if PapyrusUtil.GetScriptVersion() <= 31
+		ShowMsg("$qlie_SettingsExport_failure")
+		return
+	endif
+
+	ExportSettings_General(ConfigPath)
+	ExportSettings_Display(ConfigPath)
+	ExportSettings_Sorting(ConfigPath)
+	ExportSettings_Controls(ConfigPath)
+	ExportSettings_Compatibility(ConfigPath)
+
+	JsonUtil.Save(ConfigPath)
+
+	ShowMsg("$qlie_SettingsExport_success")
+endfunction
+
+function ImportSettings(bool initialLoad)
+	LogWithPlugin("ImportSettings")
+
+	if PapyrusUtil.GetScriptVersion() <= 31
+		if initialLoad
+			Notification("$qlie_SettingsImport_unsupportedNotif")
+			ResetSettings()
+		else
+			ShowMsg("$qlie_SettingsImport_unsupported")
+		endif
+		return
+	endif
+
+	if !JsonUtil.JsonExists(ConfigPath)
+		if initialLoad
+			Notification("$qlie_SettingsImport_missingNotif")
+			ResetSettings()
+		else
+			ShowMsg("$qlie_SettingsImport_missing")
+		endif
+		return
+	endif
+
+	if !JsonUtil.IsGood(ConfigPath)
+		if initialLoad
+			Notification("$qlie_SettingsImport_corruptNotif");
+			ResetSettings()
+		else
+			ShowMsg("$qlie_SettingsImport_corrupt{" + JsonUtil.GetErrors(ConfigPath) + "}")
+		endif
+		return
+	endif
+
+	ImportSettings_General(ConfigPath)
+	ImportSettings_Display(ConfigPath)
+	ImportSettings_Sorting(ConfigPath)
+	ImportSettings_Controls(ConfigPath)
+	ImportSettings_Compatibility(ConfigPath)
+
+	JsonUtil.Unload(ConfigPath, false)
+
+	if initialLoad
+		Notification("$qlie_SettingsImport_successNotif")
+	else
+		ShowMsg("$qlie_SettingsImport_success")
+		ForcePageReset()
+	endif
+endfunction
+
+;---------------------------------------------------
+;-- General > Behavior Settings --------------------
+;---------------------------------------------------
+
+state state_ShowInCombat
+	event OnSelectST()
+		QLIE_ShowInCombat = !QLIE_ShowInCombat
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowInCombat))
+	endevent
+
+	event OnDefaultST()
+		QLIE_ShowInCombat = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowInCombat))
+	endevent
+endstate
+
+state state_ShowWhenEmpty
+	event OnSelectST()
+		QLIE_ShowWhenEmpty = !QLIE_ShowWhenEmpty
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowWhenEmpty))
+	endevent
+
+	event OnDefaultST()
+		QLIE_ShowWhenEmpty = false
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowWhenEmpty))
+	endevent
+endstate
+
+state state_ShowWhenSneaking
+	event OnSelectST()
+		QLIE_ShowWhenSneaking = !QLIE_ShowWhenSneaking
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowWhenSneaking))
+	endevent
+
+	event OnDefaultST()
+		QLIE_ShowWhenSneaking = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowWhenSneaking))
+	endevent
+endstate
+
+state state_ShowWhenUnlocked
+	event OnSelectST()
+		QLIE_ShowWhenUnlocked = !QLIE_ShowWhenUnlocked
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowWhenUnlocked))
+	endevent
+
+	event OnDefaultST()
+		QLIE_ShowWhenUnlocked = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowWhenUnlocked))
+	endevent
+endstate
+
+state state_ShowInThirdPerson
+	event OnSelectST()
+		QLIE_ShowInThirdPerson = !QLIE_ShowInThirdPerson
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowInThirdPerson))
+	endevent
+
+	event OnDefaultST()
+		QLIE_ShowInThirdPerson = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowInThirdPerson))
+	endevent
+endstate
+
+state state_ShowWhenMounted
+	event OnSelectST()
+		QLIE_ShowWhenMounted = !QLIE_ShowWhenMounted
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowWhenMounted))
+	endevent
+
+	event OnDefaultST()
+		QLIE_ShowWhenMounted = false
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowWhenMounted))
+	endevent
+endstate
+
+state state_EnableForContainers
+	event OnSelectST()
+		QLIE_EnableForContainers = !QLIE_EnableForContainers
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_EnableForContainers))
+	endevent
+
+	event OnDefaultST()
+		QLIE_EnableForContainers = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_EnableForContainers))
+	endevent
+endstate
+
+state state_EnableForCorpses
+	event OnSelectST()
+		QLIE_EnableForCorpses = !QLIE_EnableForCorpses
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_EnableForCorpses))
+	endevent
+
+	event OnDefaultST()
+		QLIE_EnableForCorpses = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_EnableForCorpses))
+	endevent
+endstate
+
+state state_EnableForAnimals
+	event OnSelectST()
+		QLIE_EnableForAnimals = !QLIE_EnableForAnimals
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_EnableForAnimals))
+	endevent
+
+	event OnDefaultST()
+		QLIE_EnableForAnimals = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_EnableForAnimals))
+	endevent
+endstate
+
+state state_EnableForDragons
+	event OnSelectST()
+		QLIE_EnableForDragons = !QLIE_EnableForDragons
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_EnableForDragons))
+	endevent
+
+	event OnDefaultST()
+		QLIE_EnableForDragons = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_EnableForDragons))
+	endevent
+endstate
+
+state state_BreakInvisibility
+	event OnSelectST()
+		QLIE_BreakInvisibility = !QLIE_BreakInvisibility
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_BreakInvisibility))
+	endevent
+
+	event OnDefaultST()
+		QLIE_BreakInvisibility = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_BreakInvisibility))
+	endevent
+endstate
+
+state state_PlayScrollSound
+	event OnSelectST()
+		QLIE_PlayScrollSound = !QLIE_PlayScrollSound
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_PlayScrollSound))
+	endevent
+
+	event OnDefaultST()
+		QLIE_PlayScrollSound = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_PlayScrollSound))
+	endevent
+endstate
+
+;---------------------------------------------------
+;-- General > Manage -------------------------------
+;---------------------------------------------------
+
+function ResetSettings_General()
+	QLIE_ShowInCombat = true
+	QLIE_ShowWhenEmpty = false
+	QLIE_ShowWhenSneaking = true
+	QLIE_ShowWhenUnlocked = true
+	QLIE_ShowInThirdPerson = true
+	QLIE_ShowWhenMounted = false
+	QLIE_EnableForContainers = true
+	QLIE_EnableForCorpses = true
+	QLIE_EnableForAnimals = true
+	QLIE_EnableForDragons = true
+	QLIE_BreakInvisibility = true
+	QLIE_PlayScrollSound = true
+endfunction
+
+function ExportSettings_General(string path)
+	JsonUtil.SetPathIntValue(path, "ShowInCombat", QLIE_ShowInCombat as int)
+	JsonUtil.SetPathIntValue(path, "ShowWhenEmpty", QLIE_ShowWhenEmpty as int)
+	JsonUtil.SetPathIntValue(path, "ShowWhenSneaking", QLIE_ShowWhenSneaking as int)
+	JsonUtil.SetPathIntValue(path, "ShowWhenUnlocked", QLIE_ShowWhenUnlocked as int)
+	JsonUtil.SetPathIntValue(path, "ShowInThirdPerson", QLIE_ShowInThirdPerson as int)
+	JsonUtil.SetPathIntValue(path, "ShowWhenMounted", QLIE_ShowWhenMounted as int)
+	JsonUtil.SetPathIntValue(path, "EnableForContainers", QLIE_EnableForContainers as int)
+	JsonUtil.SetPathIntValue(path, "EnableForCorpses", QLIE_EnableForCorpses as int)
+	JsonUtil.SetPathIntValue(path, "EnableForAnimals", QLIE_EnableForAnimals as int)
+	JsonUtil.SetPathIntValue(path, "EnableForDragons", QLIE_EnableForDragons as int)
+	JsonUtil.SetPathIntValue(path, "BreakInvisibility", QLIE_BreakInvisibility as int)
+	JsonUtil.SetPathIntValue(path, "PlayScrollSound", QLIE_PlayScrollSound as int)
+endfunction
+
+function ImportSettings_General(string path)
+	QLIE_ShowInCombat = JsonUtil.GetPathIntValue(path, "ShowInCombat", QLIE_ShowInCombat as int)
+	QLIE_ShowWhenEmpty = JsonUtil.GetPathIntValue(path, "ShowWhenEmpty", QLIE_ShowWhenEmpty as int)
+	QLIE_ShowWhenSneaking = JsonUtil.GetPathIntValue(path, "ShowWhenSneaking", QLIE_ShowWhenSneaking as int)
+	QLIE_ShowWhenUnlocked = JsonUtil.GetPathIntValue(path, "ShowWhenUnlocked", QLIE_ShowWhenUnlocked as int)
+	QLIE_ShowInThirdPerson = JsonUtil.GetPathIntValue(path, "ShowInThirdPerson", QLIE_ShowInThirdPerson as int)
+	QLIE_ShowWhenMounted = JsonUtil.GetPathIntValue(path, "ShowWhenMounted", QLIE_ShowWhenMounted as int)
+	QLIE_EnableForContainers = JsonUtil.GetPathIntValue(path, "EnableForContainers", QLIE_EnableForContainers as int)
+	QLIE_EnableForCorpses = JsonUtil.GetPathIntValue(path, "EnableForCorpses", QLIE_EnableForCorpses as int)
+	QLIE_EnableForAnimals = JsonUtil.GetPathIntValue(path, "EnableForAnimals", QLIE_EnableForAnimals as int)
+	QLIE_EnableForDragons = JsonUtil.GetPathIntValue(path, "EnableForDragons", QLIE_EnableForDragons as int)
+	QLIE_BreakInvisibility = JsonUtil.GetPathIntValue(path, "BreakInvisibility", QLIE_BreakInvisibility as int)
+	QLIE_PlayScrollSound = JsonUtil.GetPathIntValue(path, "PlayScrollSound", QLIE_PlayScrollSound as int)
+endfunction
+
+;---------------------------------------------------
+;-- Display > Window Settings ----------------------
+;---------------------------------------------------
+
+state state_WindowOffsetX
+	event OnSliderAcceptST(float value)
+		QLIE_WindowOffsetX = value as int
+		SetSliderOptionValueST(value)
+    endevent
+
+	event OnSliderOpenST()
+		SetSliderDialogStartValue(QLIE_WindowOffsetX)
+		SetSliderDialogDefaultValue(100)
+		SetSliderDialogRange(-960, 960)
+		SetSliderDialogInterval(1)
+	endevent
+
+	event OnDefaultST()
+		QLIE_WindowOffsetX = 100
+		SetSliderOptionValueST(QLIE_WindowOffsetX)
+	endevent
+endstate
+
+state state_WindowOffsetY
+	event OnSliderAcceptST(float value)
+		QLIE_WindowOffsetY = value as int
+		SetSliderOptionValueST(value)
+    endevent
+
+	event OnSliderOpenST()
+		SetSliderDialogStartValue(QLIE_WindowOffsetY)
+		SetSliderDialogDefaultValue(-200)
+		SetSliderDialogRange(-540, 540)
+		SetSliderDialogInterval(1)
+	endevent
+
+	event OnDefaultST()
+		QLIE_WindowOffsetY = -200
+		SetSliderOptionValueST(QLIE_WindowOffsetY)
+	endevent
+endstate
+
+state state_WindowScale
+	event OnSliderAcceptST(float value)
+		QLIE_WindowScale = value
+		SetSliderOptionValueST(value, "{1}")
+    endevent
+
+	event OnSliderOpenST()
+		SetSliderDialogStartValue(QLIE_WindowScale)
+		SetSliderDialogDefaultValue(1.0)
+		SetSliderDialogRange(0.1, 3.0)
+		SetSliderDialogInterval(0.1)
+	endevent
+
+	event OnDefaultST()
+		QLIE_WindowScale = 1.0
+		SetSliderOptionValueST(QLIE_WindowScale, "{1}")
+	endevent
+endstate
+
+state state_WindowAnchor
+	event OnMenuOpenST()
+		SetMenuDialogStartIndex(QLIE_WindowAnchor)
+		SetMenuDialogDefaultIndex(0)
+		SetMenuDialogOptions(WindowAnchorNames)
+	endevent
+
+	event OnMenuAcceptST(int index)
+		QLIE_WindowAnchor = index
+		SetMenuOptionValueST(WindowAnchorNames[QLIE_WindowAnchor])
+	endevent
+
+	event OnDefaultST()
+		QLIE_WindowAnchor = 0
+		SetMenuOptionValueST(WindowAnchorNames[QLIE_WindowAnchor])
+	endevent
+endstate
+
+state state_WindowMinLines
+	event OnSliderAcceptST(float value)
+		QLIE_WindowMinLines = value as int
+		SetSliderOptionValueST(value)
+
+		if QLIE_WindowMinLines > QLIE_WindowMaxLines
+			QLIE_WindowMaxLines = QLIE_WindowMinLines
+			SetSliderOptionValueST(QLIE_WindowMaxLines, "{0}", false, "state_WindowMaxLines")
+		endif
+    endevent
+
+	event OnSliderOpenST()
+		SetSliderDialogStartValue(QLIE_WindowMinLines)
+		SetSliderDialogDefaultValue(0)
+		SetSliderDialogRange(0, 25)
+		SetSliderDialogInterval(1)
+	endevent
+
+	event OnDefaultST()
+		QLIE_WindowMinLines = 0
+		SetSliderOptionValueST(QLIE_WindowMinLines)
+	endevent
+endstate
+
+state state_WindowMaxLines
+	event OnSliderAcceptST(float value)
+		QLIE_WindowMaxLines = value as int
+		SetSliderOptionValueST(value)
+
+		if QLIE_WindowMaxLines < QLIE_WindowMinLines
+			QLIE_WindowMinLines = QLIE_WindowMaxLines
+			SetSliderOptionValueST(QLIE_WindowMinLines, "{0}", false, "state_WindowMinLines")
+		endif
+    endevent
+
+	event OnSliderOpenST()
+		SetSliderDialogStartValue(QLIE_WindowMaxLines)
+		SetSliderDialogDefaultValue(7)
+		SetSliderDialogRange(1, 25)
+		SetSliderDialogInterval(1)
+	endevent
+
+	event OnDefaultST()
+		QLIE_WindowMaxLines = 7
+		SetSliderOptionValueST(QLIE_WindowMaxLines)
+	endevent
+endstate
+
+state state_WindowOpacityNormal
+	event OnSliderAcceptST(float value)
+		QLIE_WindowOpacityNormal = value
+		SetSliderOptionValueST(value, "{1}")
+    endevent
+
+	event OnSliderOpenST()
+		SetSliderDialogStartValue(QLIE_WindowOpacityNormal)
+		SetSliderDialogDefaultValue(1.0)
+		SetSliderDialogRange(0.1, 1.0)
+		SetSliderDialogInterval(0.1)
+	endevent
+
+	event OnDefaultST()
+		QLIE_WindowOpacityNormal = 1.0
+		SetSliderOptionValueST(QLIE_WindowOpacityNormal, "{1}")
+	endevent
+endstate
+
+state state_WindowOpacityEmpty
+	event OnSliderAcceptST(float value)
+		QLIE_WindowOpacityEmpty = value
+		SetSliderOptionValueST(value, "{1}")
+    endevent
+
+	event OnSliderOpenST()
+		SetSliderDialogStartValue(QLIE_WindowOpacityEmpty)
+		SetSliderDialogDefaultValue(0.3)
+		SetSliderDialogRange(0.1, 1.0)
+		SetSliderDialogInterval(0.1)
+	endevent
+
+	event OnDefaultST()
+		QLIE_WindowOpacityEmpty = 0.3
+		SetSliderOptionValueST(QLIE_WindowOpacityEmpty, "{1}")
+	endevent
+endstate
+
+;---------------------------------------------------
+;-- Display > Icon Settings ------------------------
+;---------------------------------------------------
+
+state state_ShowIconItem
+	event OnSelectST()
+		QLIE_ShowIconItem = !QLIE_ShowIconItem
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconItem))
+	endevent
+
+	event OnDefaultST()
+		QLIE_ShowIconItem = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconItem))
+	endevent
+endstate
+
+state state_ShowIconBest
+	event OnSelectST()
+		QLIE_ShowIconBest = !QLIE_ShowIconBest
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconBest))
+	endevent
+
+	event OnDefaultST()
+		QLIE_ShowIconBest = false
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconBest))
+	endevent
+endstate
+
+state state_ShowIconRead
+	event OnSelectST()
+		QLIE_ShowIconRead = !QLIE_ShowIconRead
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconRead))
+	endevent
+
+	event OnDefaultST()
+		QLIE_ShowIconRead = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconRead))
+	endevent
+endstate
+
+state state_ShowIconStolen
+	event OnSelectST()
+		QLIE_ShowIconStolen = !QLIE_ShowIconStolen
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconStolen))
+	endevent
+
+	event OnDefaultST()
+		QLIE_ShowIconStolen = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconStolen))
+	endevent
+endstate
+
+state state_ShowIconEnchanted
+	event OnSelectST()
+		QLIE_ShowIconEnchanted = !QLIE_ShowIconEnchanted
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconEnchanted))
+	endevent
+
+	event OnDefaultST()
+		QLIE_ShowIconEnchanted = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconEnchanted))
+	endevent
+endstate
+
+state state_ShowIconEnchantedKnown
+	event OnSelectST()
+		QLIE_ShowIconEnchantedKnown = !QLIE_ShowIconEnchantedKnown
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconEnchantedKnown))
+	endevent
+
+	event OnDefaultST()
+		QLIE_ShowIconEnchantedKnown = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconEnchantedKnown))
+	endevent
+endstate
+
+state state_ShowIconEnchantedSpecial
+	event OnSelectST()
+		QLIE_ShowIconEnchantedSpecial = !QLIE_ShowIconEnchantedSpecial
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconEnchantedSpecial))
+	endevent
+
+	event OnDefaultST()
+		QLIE_ShowIconEnchantedSpecial = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconEnchantedSpecial))
+	endevent
+endstate
+
+;---------------------------------------------------
+;-- Display > Info Columns -------------------------
+;---------------------------------------------------
+
+state state_InfoColumnPreset
+	event OnMenuOpenST()
+		SetMenuDialogDefaultIndex(2)
+		SetMenuDialogStartIndex(InfoColumnPresetIndex)
+		SetMenuDialogOptions(InfoColumnPresetNames)
+	endevent
+
+	event OnMenuAcceptST(int presetIndex)
+		SetInfoColumns(InfoColumnPresetStrings[presetIndex], presetIndex)
+	endevent
+
+	event OnDefaultST()
+		SetInfoColumns(InfoColumnPresetStrings[0], 0) ; Default
+	endevent
+endstate
+
+state state_InfoColumnString
+	event OnInputOpenST()
+		SetInputDialogStartText(StringJoin(QLIE_InfoColumns))
+	endevent
+
+	event OnInputAcceptST(string input)
+		SetInfoColumns(input, -1) ; Custom
+	endevent
+
+	event OnDefaultST()
+		SetInfoColumns(InfoColumnPresetStrings[0], 0) ; Default
+	endevent
+endstate
+
+function SetInfoColumns(string infoColumnsString, int presetIndex, bool initialLoad = false) ; Pass presetIndex = -1 to validate and auto detect
+	string[] columns = StringSplit(infoColumnsString)
+
+	if GetLength(infoColumnsString) == 0
+		columns = None
+	endif
+
+	if presetIndex < 0
+		if !ValidateInfoColumns(columns)
+			return
+		endif
+
+		presetIndex = InfoColumnPresetStrings.Find(infoColumnsString)
+	endif
+
+	InfoColumnPresetIndex = presetIndex
+	if !initialLoad
+		if presetIndex < 0
+			SetMenuOptionValueST("$qlie_InfoColumnPreset_custom", false, "state_InfoColumnPreset")
+		else
+			SetMenuOptionValueST(InfoColumnPresetNames[InfoColumnPresetIndex], false, "state_InfoColumnPreset")
+		endif
+	endif
+
+	QLIE_InfoColumns = columns
+endfunction
+
+bool function ValidateInfoColumns(string[] columns)
+	int i = 0
+	while i < columns.Length
+		string col = columns[i]
+		if col != "value" && col != "weight" && col != "valuePerWeight"
+			ShowMsg("Invalid info column name: " + col)
+			return false
+		endif
+		i += 1
+	endwhile
+
+	return true
+endfunction
+
+;---------------------------------------------------
+;-- Display > Manage -------------------------------
+;---------------------------------------------------
+
+function ResetSettings_Display()
+	QLIE_WindowOffsetX = 100
+	QLIE_WindowOffsetY = -200
+	QLIE_WindowScale = 1.0
+	QLIE_WindowAnchor = 0
+	QLIE_WindowMinLines = 0
+	QLIE_WindowMaxLines = 7
+	QLIE_WindowOpacityNormal = 1.0
+	QLIE_WindowOpacityEmpty = 0.3
+
+	QLIE_ShowIconItem = true
+	QLIE_ShowIconBest = false
+	QLIE_ShowIconRead = true
+	QLIE_ShowIconStolen = true
+	QLIE_ShowIconEnchanted = true
+	QLIE_ShowIconEnchantedKnown = true
+	QLIE_ShowIconEnchantedSpecial = true
+
+	SetInfoColumns(InfoColumnPresetStrings[0], 0, true)
+endfunction
+
+function ExportSettings_Display(string path)
+	JsonUtil.SetPathIntValue(path, "WindowOffsetX", QLIE_WindowOffsetX)
+	JsonUtil.SetPathIntValue(path, "WindowOffsetY", QLIE_WindowOffsetY)
+	JsonUtil.SetPathFloatValue(path, "WindowScale", QLIE_WindowScale)
+	JsonUtil.SetPathIntValue(path, "WindowAnchor", QLIE_WindowAnchor)
+	JsonUtil.SetPathIntValue(path, "WindowMinLines", QLIE_WindowMinLines)
+	JsonUtil.SetPathIntValue(path, "WindowMaxLines", QLIE_WindowMaxLines)
+	JsonUtil.SetPathFloatValue(path, "WindowOpacityNormal", QLIE_WindowOpacityNormal)
+	JsonUtil.SetPathFloatValue(path, "WindowOpacityEmpty", QLIE_WindowOpacityEmpty)
+
+	JsonUtil.SetPathIntValue(path, "ShowIconItem", QLIE_ShowIconItem as int)
+	JsonUtil.SetPathIntValue(path, "ShowIconBest", QLIE_ShowIconBest as int)
+	JsonUtil.SetPathIntValue(path, "ShowIconRead", QLIE_ShowIconRead as int)
+	JsonUtil.SetPathIntValue(path, "ShowIconStolen", QLIE_ShowIconStolen as int)
+	JsonUtil.SetPathIntValue(path, "ShowIconEnchanted", QLIE_ShowIconEnchanted as int)
+	JsonUtil.SetPathIntValue(path, "ShowIconEnchantedKnown", QLIE_ShowIconEnchantedKnown as int)
+	JsonUtil.SetPathIntValue(path, "ShowIconEnchantedSpecial", QLIE_ShowIconEnchantedSpecial as int)
+
+	JsonUtil.SetPathStringArray(path, "InfoColumns", QLIE_InfoColumns)
+endfunction
+
+function ImportSettings_Display(string path)
+	QLIE_WindowOffsetX = JsonUtil.GetPathIntValue(path, "WindowOffsetX", QLIE_WindowOffsetX)
+	QLIE_WindowOffsetY = JsonUtil.GetPathIntValue(path, "WindowOffsetY", QLIE_WindowOffsetY)
+	QLIE_WindowScale = JsonUtil.GetPathFloatValue(path, "WindowScale", QLIE_WindowScale)
+	QLIE_WindowAnchor = JsonUtil.GetPathIntValue(path, "WindowAnchor", QLIE_WindowAnchor)
+	QLIE_WindowMinLines = JsonUtil.GetPathIntValue(path, "WindowMinLines", QLIE_WindowMinLines)
+	QLIE_WindowMaxLines = JsonUtil.GetPathIntValue(path, "WindowMaxLines", QLIE_WindowMaxLines)
+	QLIE_WindowOpacityNormal = JsonUtil.GetPathFloatValue(path, "WindowOpacityNormal", QLIE_WindowOpacityNormal)
+	QLIE_WindowOpacityEmpty = JsonUtil.GetPathFloatValue(path, "WindowOpacityEmpty", QLIE_WindowOpacityEmpty)
+
+	QLIE_ShowIconItem = JsonUtil.GetPathIntValue(path, "ShowIconItem", QLIE_ShowIconItem as int)
+	QLIE_ShowIconBest = JsonUtil.GetPathIntValue(path, "ShowIconBest", QLIE_ShowIconBest as int)
+	QLIE_ShowIconRead = JsonUtil.GetPathIntValue(path, "ShowIconRead", QLIE_ShowIconRead as int)
+	QLIE_ShowIconStolen = JsonUtil.GetPathIntValue(path, "ShowIconStolen", QLIE_ShowIconStolen as int)
+	QLIE_ShowIconEnchanted = JsonUtil.GetPathIntValue(path, "ShowIconEnchanted", QLIE_ShowIconEnchanted as int)
+	QLIE_ShowIconEnchantedKnown = JsonUtil.GetPathIntValue(path, "ShowIconEnchantedKnown", QLIE_ShowIconEnchantedKnown as int)
+	QLIE_ShowIconEnchantedSpecial = JsonUtil.GetPathIntValue(path, "ShowIconEnchantedSpecial", QLIE_ShowIconEnchantedSpecial as int)
+
+	QLIE_InfoColumns = JsonUtil.PathStringElements(path, "InfoColumns", QLIE_InfoColumns)
+endfunction
+
+;---------------------------------------------------
+;-- Sorting ----------------------------------------
+;---------------------------------------------------
+
+state state_SortInsert
+	event OnMenuOpenST()
+		SetMenuDialogStartIndex(0)
+		SetMenuDialogDefaultIndex(0)
+		SetMenuDialogOptions(SortRulesAvailable)
+	endevent
+
+	event OnMenuAcceptST(int index)
+		InsertSortOption(SortRulesAvailable[index])
+	endevent
+
+	event OnHighlightST()
+		if SortSelectedRuleIndex >= 0 && SortSelectedRuleIndex < QLIE_SortRulesActive.Length
+			SetInfoText("$qlie_SortInsert_info{" + QLIE_SortRulesActive[SortSelectedRuleIndex] + "}")
+		else
+			SetInfoText("$qlie_SortInsert_info")
+		endif
+	endevent
+endstate
+
+state state_SortRemove
+	event OnSelectST()
+		RemoveSelectedSortOption()
+	endevent
+
+	event OnHighlightST()
+		if SortSelectedRuleIndex >= 0 && SortSelectedRuleIndex < QLIE_SortRulesActive.Length
+			SetInfoText("$qlie_SortRemove_info{" + QLIE_SortRulesActive[SortSelectedRuleIndex] + "}")
+		else
+			SetInfoText("$qlie_SortRemove_info")
+		endif
+	endevent
+endstate
+
+state state_SortReset
+	event OnSelectST()
+		InitSortRuleLists(true)
+		ForcePageReset()
+	endevent
+endstate
+
+state state_SortPresetSave
+	event OnInputAcceptST(string presetName)
+		SaveSortPreset(presetName)
+	endevent
+endstate
+
+state state_SortPresetLoad
+	event OnMenuOpenST()
+		SetMenuDialogStartIndex(0)
+		SetMenuDialogDefaultIndex(0)
+		SetMenuDialogOptions(SortPresetNames)
+	endevent
+
+	event OnMenuAcceptST(int index)
+		LoadSortPreset(index)
+	endevent
+endstate
+
+function InsertSortOption(string optionName)
+	int index = SortSelectedRuleIndex
+	if index < 0 || index >= QLIE_SortRulesActive.Length
+		index = QLIE_SortRulesActive.Length
+	else
+		SortSelectedRuleIndex = index + 1
+	endif
+
+	QLIE_SortRulesActive = InsertSortOptionPriority(QLIE_SortRulesActive, optionName, index)
+
+	ForcePageReset()
+endfunction
+
+function RemoveSelectedSortOption()
+	QLIE_SortRulesActive = RemoveSortOptionPriority(QLIE_SortRulesActive, SortSelectedRuleIndex)
+
+	if SortSelectedRuleIndex >= QLIE_SortRulesActive.Length
+		SortSelectedRuleIndex = QLIE_SortRulesActive.Length - 1
+	endif
+
+	ForcePageReset()
+endfunction
+
+function SaveSortPreset(string presetName)
+	if presetName == ""
+		return
+	endif
+
+	if PapyrusUtil.GetScriptVersion() <= 31
+		ShowMsg("$qlie_SortPresetSave_unsupported")
+		return
+	endif
+
+	string path = SortPresetPath + presetName
+	ExportSettings_Sorting(path)
+	JsonUtil.Save(path)
+
+	ShowMsg("$qlie_SortPresetSave_success")
+
+	InitSortPresetList()
+endfunction
+
+function LoadSortPreset(int index)
+	if index <= 0
+		return
+	endif
+
+	if PapyrusUtil.GetScriptVersion() <= 31
+		ShowMsg("$qlie_SortPresetLoad_unsupported")
+		return
+	endif
+
+	if index < SortPredefinedPresetCount
+		QLIE_SortRulesActive = GetSortingPreset(index)
+	else
+		string path = SortPresetPath + SortPresetNames[index]
+		ShowMsg(path)
+		ImportSettings_Sorting(path)
+		JsonUtil.Unload(path, false)
+	endif
+
+	ForcePageReset()
+endfunction
+
+;---------------------------------------------------
+;-- Sorting > Manage -------------------------------
+;---------------------------------------------------
+
+function ResetSettings_Sorting()
+	QLIE_SortRulesActive = GetSortingPreset(0)
+endfunction
+
+function ExportSettings_Sorting(string path)
+	JsonUtil.SetPathStringArray(path, "SortRulesActive", QLIE_SortRulesActive)
+endfunction
+
+function ImportSettings_Sorting(string path)
+	string[] temp = JsonUtil.PathStringElements(path, "SortRulesActive")
+	if temp != None
+		QLIE_SortRulesActive = temp
+		return
+	endif
+
+	; keep old presets compatible
+	temp = JsonUtil.PathStringElements(path, "SortRules")
+	if temp != None
+		QLIE_SortRulesActive = temp
+	endif
+endfunction
+
+;---------------------------------------------------
+;-- Controls ---------------------------------------
+;---------------------------------------------------
+
+state state_ControlsUse
+	event OnKeyMapChangeST(int keyCode, string conflictControl, string conflictName)
+		SetKeyMapOptionValueST(keyCode)
+
+		bool isGamepad = IsGamepadKey(keyCode)
+		if isGamepad
+			QLIE_KeybindingUseGamepad = keyCode
+		else
+			QLIE_KeybindingUse = keyCode
+		endif
+
+		if isGamepad != GamepadMode
+			GamepadMode = isGamepad
+			ForcePageReset()
+		endif
+	endevent
+endstate
+
+state state_ControlsTake
+	event OnKeyMapChangeST(int keyCode, string conflictControl, string conflictName)
+		SetKeyMapOptionValueST(keyCode)
+
+		bool isGamepad = IsGamepadKey(keyCode)
+		if isGamepad
+			QLIE_KeybindingTakeGamepad = keyCode
+		else
+			QLIE_KeybindingTake = keyCode
+		endif
+
+		if isGamepad != GamepadMode
+			GamepadMode = isGamepad
+			ForcePageReset()
+		endif
+	endevent
+endstate
+
+state state_ControlsTakeAll
+	event OnKeyMapChangeST(int keyCode, string conflictControl, string conflictName)
+		SetKeyMapOptionValueST(keyCode)
+
+		bool isGamepad = IsGamepadKey(keyCode)
+		if isGamepad
+			QLIE_KeybindingTakeAllGamepad = keyCode
+		else
+			QLIE_KeybindingTakeAll = keyCode
+		endif
+
+		if isGamepad != GamepadMode
+			GamepadMode = isGamepad
+			ForcePageReset()
+		endif
+	endevent
+endstate
+
+state state_ControlsTransfer
+	event OnKeyMapChangeST(int keyCode, string conflictControl, string conflictName)
+		SetKeyMapOptionValueST(keyCode)
+
+		bool isGamepad = IsGamepadKey(keyCode)
+		if isGamepad
+			QLIE_KeybindingTransferGamepad = keyCode
+		else
+			QLIE_KeybindingTransfer = keyCode
+		endif
+
+		if isGamepad != GamepadMode
+			GamepadMode = isGamepad
+			ForcePageReset()
+		endif
+	endevent
+endstate
+
+state state_ControlsDisable
+	event OnKeyMapChangeST(int keyCode, string conflictControl, string conflictName)
+		SetKeyMapOptionValueST(keyCode)
+
+		bool isGamepad = IsGamepadKey(keyCode)
+		if isGamepad
+			QLIE_KeybindingDisableGamepad = keyCode
+		else
+			QLIE_KeybindingDisable = keyCode
+		endif
+
+		if isGamepad != GamepadMode
+			GamepadMode = isGamepad
+			ForcePageReset()
+		endif
+	endevent
+endstate
+
+state state_ControlsEnable
+	event OnKeyMapChangeST(int keyCode, string conflictControl, string conflictName)
+		SetKeyMapOptionValueST(keyCode)
+
+		bool isGamepad = IsGamepadKey(keyCode)
+		if isGamepad
+			QLIE_KeybindingEnableGamepad = keyCode
+		else
+			QLIE_KeybindingEnable = keyCode
+		endif
+
+		if isGamepad != GamepadMode
+			GamepadMode = isGamepad
+			ForcePageReset()
+		endif
+	endevent
+endstate
+
+state state_ControlsUseModifier
+	event OnKeyMapChangeST(int keyCode, string conflictControl, string conflictName)
+		SetKeyMapOptionValueST(keyCode)
+
+		bool isGamepad = IsGamepadKey(keyCode)
+		if isGamepad
+			QLIE_KeybindingUseGamepadModifier = keyCode
+		else
+			QLIE_KeybindingUseModifier = keyCode
+		endif
+
+		if isGamepad != GamepadMode
+			GamepadMode = isGamepad
+			ForcePageReset()
+		endif
+	endevent
+
+	event OnHighlightST()
+		SetInfoText("$qlie_ControlsModifier_info")
+	endevent
+endstate
+
+state state_ControlsTakeModifier
+	event OnKeyMapChangeST(int keyCode, string conflictControl, string conflictName)
+		SetKeyMapOptionValueST(keyCode)
+
+		bool isGamepad = IsGamepadKey(keyCode)
+		if isGamepad
+			QLIE_KeybindingTakeGamepadModifier = keyCode
+		else
+			QLIE_KeybindingTakeModifier = keyCode
+		endif
+
+		if isGamepad != GamepadMode
+			GamepadMode = isGamepad
+			ForcePageReset()
+		endif
+	endevent
+
+	event OnHighlightST()
+		SetInfoText("$qlie_ControlsModifier_info")
+	endevent
+endstate
+
+state state_ControlsTakeAllModifier
+	event OnKeyMapChangeST(int keyCode, string conflictControl, string conflictName)
+		SetKeyMapOptionValueST(keyCode)
+
+		bool isGamepad = IsGamepadKey(keyCode)
+		if isGamepad
+			QLIE_KeybindingTakeAllGamepadModifier = keyCode
+		else
+			QLIE_KeybindingTakeAllModifier = keyCode
+		endif
+
+		if isGamepad != GamepadMode
+			GamepadMode = isGamepad
+			ForcePageReset()
+		endif
+	endevent
+
+	event OnHighlightST()
+		SetInfoText("$qlie_ControlsModifier_info")
+	endevent
+endstate
+
+state state_ControlsTransferModifier
+	event OnKeyMapChangeST(int keyCode, string conflictControl, string conflictName)
+		SetKeyMapOptionValueST(keyCode)
+
+		bool isGamepad = IsGamepadKey(keyCode)
+		if isGamepad
+			QLIE_KeybindingTransferGamepadModifier = keyCode
+		else
+			QLIE_KeybindingTransferModifier = keyCode
+		endif
+
+		if isGamepad != GamepadMode
+			GamepadMode = isGamepad
+			ForcePageReset()
+		endif
+	endevent
+
+	event OnHighlightST()
+		SetInfoText("$qlie_ControlsModifier_info")
+	endevent
+endstate
+
+state state_ControlsDisableModifier
+	event OnKeyMapChangeST(int keyCode, string conflictControl, string conflictName)
+		SetKeyMapOptionValueST(keyCode)
+
+		bool isGamepad = IsGamepadKey(keyCode)
+		if isGamepad
+			QLIE_KeybindingDisableGamepadModifier = keyCode
+		else
+			QLIE_KeybindingDisableModifier = keyCode
+		endif
+
+		if isGamepad != GamepadMode
+			GamepadMode = isGamepad
+			ForcePageReset()
+		endif
+	endevent
+
+	event OnHighlightST()
+		SetInfoText("$qlie_ControlsModifier_info")
+	endevent
+endstate
+
+state state_ControlsEnableModifier
+	event OnKeyMapChangeST(int keyCode, string conflictControl, string conflictName)
+		SetKeyMapOptionValueST(keyCode)
+
+		bool isGamepad = IsGamepadKey(keyCode)
+		if isGamepad
+			QLIE_KeybindingEnableGamepadModifier = keyCode
+		else
+			QLIE_KeybindingEnableModifier = keyCode
+		endif
+
+		if isGamepad != GamepadMode
+			GamepadMode = isGamepad
+			ForcePageReset()
+		endif
+	endevent
+
+	event OnHighlightST()
+		SetInfoText("$qlie_ControlsModifier_info")
+	endevent
+endstate
+
+state state_ControlReset
+	event OnSelectST()
+		ResetControls()
+		ForcePageReset()
+	endevent
+endstate
+
+state state_ControlPresetSave
+	event OnInputAcceptST(string presetName)
+		SaveControlPreset(presetName)
+	endevent
+endstate
+
+state state_ControlPresetLoad
+	event OnMenuOpenST()
+		SetMenuDialogStartIndex(0)
+		SetMenuDialogDefaultIndex(0)
+		SetMenuDialogOptions(ControlPresetNames)
+	endevent
+
+	event OnMenuAcceptST(int index)
+		LoadControlPreset(index)
+	endevent
+endstate
+
+bool function IsGamepadKey(int keyCode)
+	if keyCode < 0
+		return GamepadMode
+	endif
+
+	return keyCode >= 266
+endfunction
+
+function ResetControls(int presetId = 0)
+	ResetSettings_Controls()
+
+	if presetId == 1
+		QLIE_KeybindingUseModifier = 56				; LAlt
+
+		QLIE_KeybindingTakeAll = 18					; E
+		QLIE_KeybindingTransfer = 19				; R
+
+		QLIE_KeybindingTakeAllModifier = 42			; LShift
+
+		QLIE_KeybindingTransferGamepad = 273		; Gamepad Right Stick
+	endif
+endfunction
+
+function SaveControlPreset(string presetName)
+	if presetName == ""
+		return
+	endif
+
+	if PapyrusUtil.GetScriptVersion() <= 31
+		ShowMsg("$qlie_ControlPresetSave_unsupported")
+		return
+	endif
+
+	string path = ControlPresetPath + presetName
+	ExportSettings_Controls(path)
+	JsonUtil.Save(path)
+
+	ShowMsg("$qlie_ControlPresetSave_success")
+
+	InitControlPresets()
+endfunction
+
+function LoadControlPreset(int index)
+	if index < 0
+		return
+	endif
+
+	if PapyrusUtil.GetScriptVersion() <= 31
+		ShowMsg("$qlie_ControlPresetLoad_unsupported")
+		return
+	endif
+
+	if index < ControlPredefinedPresetCount
+		ResetControls(index)
+	else
+		string path = ControlPresetPath + ControlPresetNames[index]
+		ImportSettings_Controls(path)
+		JsonUtil.Unload(path, false)
+	endif
+
+	ForcePageReset()
+endfunction
+
+;---------------------------------------------------
+;-- Controls > Manage ------------------------------
+;---------------------------------------------------
+
+function ResetSettings_Controls()
+	QLIE_KeybindingUse = 18						; E
+	QLIE_KeybindingTake = 18					; E
+	QLIE_KeybindingTakeAll = 19					; R
+	QLIE_KeybindingTransfer = 16				; Q
+	QLIE_KeybindingDisable = -1					; None
+	QLIE_KeybindingEnable = -1					; None
+
+	QLIE_KeybindingUseModifier = 42				; LShift
+	QLIE_KeybindingTakeModifier = -1			; None
+	QLIE_KeybindingTakeAllModifier = -1			; None
+	QLIE_KeybindingTransferModifier = -1		; None
+	QLIE_KeybindingDisableModifier = -1			; None
+	QLIE_KeybindingEnableModifier = -1			; None
+
+	QLIE_KeybindingUseGamepad = 279				; Gamepad Y
+	QLIE_KeybindingTakeGamepad = 276			; Gamepad A
+	QLIE_KeybindingTakeAllGamepad = 278			; Gamepad X
+	QLIE_KeybindingTransferGamepad = 271		; Gamepad Back
+	QLIE_KeybindingDisableGamepad = -1			; None
+	QLIE_KeybindingEnableGamepad = -1			; None
+
+	QLIE_KeybindingUseGamepadModifier = -1		; None
+	QLIE_KeybindingTakeGamepadModifier = -1		; None
+	QLIE_KeybindingTakeAllGamepadModifier = -1	; None
+	QLIE_KeybindingTransferGamepadModifier = -1	; None
+	QLIE_KeybindingDisableGamepadModifier = -1	; None
+	QLIE_KeybindingEnableGamepadModifier = -1	; None
+endfunction
+
+function ExportSettings_Controls(string path)
+	; Signal that we're using keycodes instead of the modifier enum
+	JsonUtil.SetPathIntValue(path, "KeybindingNewFormat", 1)
+
+	JsonUtil.SetPathIntValue(path, "KeybindingUse", QLIE_KeybindingUse)
+	JsonUtil.SetPathIntValue(path, "KeybindingTake", QLIE_KeybindingTake)
+	JsonUtil.SetPathIntValue(path, "KeybindingTakeAll", QLIE_KeybindingTakeAll)
+	JsonUtil.SetPathIntValue(path, "KeybindingTransfer", QLIE_KeybindingTransfer)
+	JsonUtil.SetPathIntValue(path, "KeybindingDisable", QLIE_KeybindingDisable)
+	JsonUtil.SetPathIntValue(path, "KeybindingEnable", QLIE_KeybindingEnable)
+
+	JsonUtil.SetPathIntValue(path, "KeybindingUseModifier", QLIE_KeybindingUseModifier)
+	JsonUtil.SetPathIntValue(path, "KeybindingTakeModifier", QLIE_KeybindingTakeModifier)
+	JsonUtil.SetPathIntValue(path, "KeybindingTakeAllModifier", QLIE_KeybindingTakeAllModifier)
+	JsonUtil.SetPathIntValue(path, "KeybindingTransferModifier", QLIE_KeybindingTransferModifier)
+	JsonUtil.SetPathIntValue(path, "KeybindingDisableModifier", QLIE_KeybindingDisableModifier)
+	JsonUtil.SetPathIntValue(path, "KeybindingEnableModifier", QLIE_KeybindingEnableModifier)
+
+	JsonUtil.SetPathIntValue(path, "KeybindingUseGamepad", QLIE_KeybindingUseGamepad)
+	JsonUtil.SetPathIntValue(path, "KeybindingTakeGamepad", QLIE_KeybindingTakeGamepad)
+	JsonUtil.SetPathIntValue(path, "KeybindingTakeAllGamepad", QLIE_KeybindingTakeAllGamepad)
+	JsonUtil.SetPathIntValue(path, "KeybindingTransferGamepad", QLIE_KeybindingTransferGamepad)
+	JsonUtil.SetPathIntValue(path, "KeybindingDisableGamepad", QLIE_KeybindingDisableGamepad)
+	JsonUtil.SetPathIntValue(path, "KeybindingEnableGamepad", QLIE_KeybindingEnableGamepad)
+
+	JsonUtil.SetPathIntValue(path, "KeybindingUseGamepadModifier", QLIE_KeybindingUseGamepadModifier)
+	JsonUtil.SetPathIntValue(path, "KeybindingTakeGamepadModifier", QLIE_KeybindingTakeGamepadModifier)
+	JsonUtil.SetPathIntValue(path, "KeybindingTakeAllGamepadModifier", QLIE_KeybindingTakeAllGamepadModifier)
+	JsonUtil.SetPathIntValue(path, "KeybindingTransferGamepadModifier", QLIE_KeybindingTransferGamepadModifier)
+	JsonUtil.SetPathIntValue(path, "KeybindingDisableGamepadModifier", QLIE_KeybindingDisableGamepadModifier)
+	JsonUtil.SetPathIntValue(path, "KeybindingEnableGamepadModifier", QLIE_KeybindingEnableGamepadModifier)
+endfunction
+
+function ImportSettings_Controls(string path)
+	QLIE_KeybindingUse = JsonUtil.GetPathIntValue(path, "KeybindingUse", QLIE_KeybindingUse)
+	QLIE_KeybindingTake = JsonUtil.GetPathIntValue(path, "KeybindingTake", QLIE_KeybindingTake)
+	QLIE_KeybindingTakeAll = JsonUtil.GetPathIntValue(path, "KeybindingTakeAll", QLIE_KeybindingTakeAll)
+	QLIE_KeybindingTransfer = JsonUtil.GetPathIntValue(path, "KeybindingTransfer", QLIE_KeybindingTransfer)
+	QLIE_KeybindingDisable = JsonUtil.GetPathIntValue(path, "KeybindingDisable", QLIE_KeybindingDisable)
+	QLIE_KeybindingEnable = JsonUtil.GetPathIntValue(path, "KeybindingEnable", QLIE_KeybindingEnable)
+
+	QLIE_KeybindingUseModifier = JsonUtil.GetPathIntValue(path, "KeybindingUseModifier", QLIE_KeybindingUseModifier)
+	QLIE_KeybindingTakeModifier = JsonUtil.GetPathIntValue(path, "KeybindingTakeModifier", QLIE_KeybindingTakeModifier)
+	QLIE_KeybindingTakeAllModifier = JsonUtil.GetPathIntValue(path, "KeybindingTakeAllModifier", QLIE_KeybindingTakeAllModifier)
+	QLIE_KeybindingTransferModifier = JsonUtil.GetPathIntValue(path, "KeybindingTransferModifier", QLIE_KeybindingTransferModifier)
+	QLIE_KeybindingDisableModifier = JsonUtil.GetPathIntValue(path, "KeybindingDisableModifier", QLIE_KeybindingDisableModifier)
+	QLIE_KeybindingEnableModifier = JsonUtil.GetPathIntValue(path, "KeybindingEnableModifier", QLIE_KeybindingEnableModifier)
+
+	QLIE_KeybindingUseGamepad = JsonUtil.GetPathIntValue(path, "KeybindingUseGamepad", QLIE_KeybindingUseGamepad)
+	QLIE_KeybindingTakeGamepad = JsonUtil.GetPathIntValue(path, "KeybindingTakeGamepad", QLIE_KeybindingTakeGamepad)
+	QLIE_KeybindingTakeAllGamepad = JsonUtil.GetPathIntValue(path, "KeybindingTakeAllGamepad", QLIE_KeybindingTakeAllGamepad)
+	QLIE_KeybindingTransferGamepad = JsonUtil.GetPathIntValue(path, "KeybindingTransferGamepad", QLIE_KeybindingTransferGamepad)
+	QLIE_KeybindingDisableGamepad = JsonUtil.GetPathIntValue(path, "KeybindingDisableGamepad", QLIE_KeybindingDisableGamepad)
+	QLIE_KeybindingEnableGamepad = JsonUtil.GetPathIntValue(path, "KeybindingEnableGamepad", QLIE_KeybindingEnableGamepad)
+
+	QLIE_KeybindingUseGamepadModifier = JsonUtil.GetPathIntValue(path, "KeybindingUseGamepadModifier", QLIE_KeybindingUseGamepadModifier)
+	QLIE_KeybindingTakeGamepadModifier = JsonUtil.GetPathIntValue(path, "KeybindingTakeGamepadModifier", QLIE_KeybindingTakeGamepadModifier)
+	QLIE_KeybindingTakeAllGamepadModifier = JsonUtil.GetPathIntValue(path, "KeybindingTakeAllGamepadModifier", QLIE_KeybindingTakeAllGamepadModifier)
+	QLIE_KeybindingTransferGamepadModifier = JsonUtil.GetPathIntValue(path, "KeybindingTransferGamepadModifier", QLIE_KeybindingTransferGamepadModifier)
+	QLIE_KeybindingDisableGamepadModifier = JsonUtil.GetPathIntValue(path, "KeybindingDisableGamepadModifier", QLIE_KeybindingDisableGamepadModifier)
+	QLIE_KeybindingEnableGamepadModifier = JsonUtil.GetPathIntValue(path, "KeybindingEnableGamepadModifier", QLIE_KeybindingEnableGamepadModifier)
+endfunction
+
+;---------------------------------------------------
+;-- Compatibility ----------------------------------
+;---------------------------------------------------
+
+state state_ShowIconArtifactDisplayed
+	event OnSelectST()
+		QLIE_ShowIconArtifactDisplayed = !QLIE_ShowIconArtifactDisplayed
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconArtifactDisplayed))
+	endevent
+
+	event OnDefaultST()
+		QLIE_ShowIconArtifactDisplayed = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconArtifactDisplayed))
+	endevent
+endstate
+
+state state_ShowIconArtifactCarried
+	event OnSelectST()
+		QLIE_ShowIconArtifactCarried = !QLIE_ShowIconArtifactCarried
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconArtifactCarried))
+	endevent
+
+	event OnDefaultST()
+		QLIE_ShowIconArtifactCarried = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconArtifactCarried))
+	endevent
+endstate
+
+state state_ShowIconArtifactNew
+	event OnSelectST()
+		QLIE_ShowIconArtifactNew = !QLIE_ShowIconArtifactNew
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconArtifactNew))
+	endevent
+
+	event OnDefaultST()
+		QLIE_ShowIconArtifactNew = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconArtifactNew))
+	endevent
+endstate
+
+state state_ShowIconCompletionistNeeded
+	event OnSelectST()
+		QLIE_ShowIconCompletionistNeeded = !QLIE_ShowIconCompletionistNeeded
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconCompletionistNeeded))
+	endevent
+
+	event OnDefaultST()
+		QLIE_ShowIconCompletionistNeeded = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconCompletionistNeeded))
+	endevent
+endstate
+
+state state_ShowIconCompletionistCollected
+	event OnSelectST()
+		QLIE_ShowIconCompletionistCollected = !QLIE_ShowIconCompletionistCollected
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconCompletionistCollected))
+	endevent
+
+	event OnDefaultST()
+		QLIE_ShowIconCompletionistCollected = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconCompletionistCollected))
+	endevent
+endstate
+
+state state_ShowIconCompletionistDisplayable
+	event OnSelectST()
+		QLIE_ShowIconCompletionistDisplayable = !QLIE_ShowIconCompletionistDisplayable
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconCompletionistDisplayable))
+	endevent
+
+	event OnDefaultST()
+		QLIE_ShowIconCompletionistDisplayable = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconCompletionistDisplayable))
+	endevent
+endstate
+
+state state_ShowIconCompletionistDisplayed
+	event OnSelectST()
+		QLIE_ShowIconCompletionistDisplayed = !QLIE_ShowIconCompletionistDisplayed
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconCompletionistDisplayed))
+	endevent
+
+	event OnDefaultST()
+		QLIE_ShowIconCompletionistDisplayed = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconCompletionistDisplayed))
+	endevent
+endstate
+
+state state_ShowIconCompletionistOccupied
+	event OnSelectST()
+		QLIE_ShowIconCompletionistOccupied = !QLIE_ShowIconCompletionistOccupied
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconCompletionistOccupied))
+	endevent
+
+	event OnDefaultST()
+		QLIE_ShowIconCompletionistOccupied = true
+		SetTextOptionValueST(GetEnabledStatusText(QLIE_ShowIconCompletionistOccupied))
+	endevent
+endstate
+
+;---------------------------------------------------
+;-- Compatibility > Manage -------------------------
+;---------------------------------------------------
+
+function ResetSettings_Compatibility()
+	QLIE_ShowIconArtifactNew = true
+	QLIE_ShowIconArtifactCarried = true
+	QLIE_ShowIconArtifactDisplayed = true
+
+	QLIE_ShowIconCompletionistNeeded = true
+	QLIE_ShowIconCompletionistCollected = true
+	QLIE_ShowIconCompletionistDisplayable = true
+	QLIE_ShowIconCompletionistDisplayed = true
+	QLIE_ShowIconCompletionistOccupied = true
+endfunction
+
+function ExportSettings_Compatibility(string path)
+	JsonUtil.SetPathIntValue(path, "ShowIconArtifactNew", QLIE_ShowIconArtifactNew as int)
+	JsonUtil.SetPathIntValue(path, "ShowIconArtifactCarried", QLIE_ShowIconArtifactCarried as int)
+	JsonUtil.SetPathIntValue(path, "ShowIconArtifactDisplayed", QLIE_ShowIconArtifactDisplayed as int)
+
+	JsonUtil.SetPathIntValue(path, "ShowIconCompletionistNeeded", QLIE_ShowIconCompletionistNeeded as int)
+	JsonUtil.SetPathIntValue(path, "ShowIconCompletionistCollected", QLIE_ShowIconCompletionistCollected as int)
+	JsonUtil.SetPathIntValue(path, "ShowIconCompletionistDisplayable", QLIE_ShowIconCompletionistDisplayable as int)
+	JsonUtil.SetPathIntValue(path, "ShowIconCompletionistDisplayed", QLIE_ShowIconCompletionistDisplayed as int)
+	JsonUtil.SetPathIntValue(path, "ShowIconCompletionistOccupied", QLIE_ShowIconCompletionistOccupied as int)
+endfunction
+
+function ImportSettings_Compatibility(string path)
+	QLIE_ShowIconArtifactDisplayed = JsonUtil.GetPathIntValue(path, "ShowIconArtifactDisplayed", QLIE_ShowIconArtifactDisplayed as int)
+	QLIE_ShowIconArtifactCarried = JsonUtil.GetPathIntValue(path, "ShowIconArtifactCarried", QLIE_ShowIconArtifactCarried as int)
+	QLIE_ShowIconArtifactNew = JsonUtil.GetPathIntValue(path, "ShowIconArtifactNew", QLIE_ShowIconArtifactNew as int)
+
+	QLIE_ShowIconCompletionistNeeded = JsonUtil.GetPathIntValue(path, "ShowIconCompletionistNeeded", QLIE_ShowIconCompletionistNeeded as int)
+	QLIE_ShowIconCompletionistCollected = JsonUtil.GetPathIntValue(path, "ShowIconCompletionistCollected", QLIE_ShowIconCompletionistCollected as int)
+	QLIE_ShowIconCompletionistDisplayable = JsonUtil.GetPathIntValue(path, "ShowIconCompletionistDisplayable", QLIE_ShowIconCompletionistDisplayable as int)
+	QLIE_ShowIconCompletionistDisplayed = JsonUtil.GetPathIntValue(path, "ShowIconCompletionistDisplayed", QLIE_ShowIconCompletionistDisplayed as int)
+	QLIE_ShowIconCompletionistOccupied = JsonUtil.GetPathIntValue(path, "ShowIconCompletionistOccupied", QLIE_ShowIconCompletionistOccupied as int)
+endfunction

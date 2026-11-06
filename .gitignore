@@ -1,0 +1,7 @@
+Builds/
+tests/build/
+*.log
+*.user
+*.obj
+*.pdb
+__pycache__/

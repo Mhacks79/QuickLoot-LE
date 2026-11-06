@@ -1,0 +1,10 @@
+LIBRARY	"QuickLootIELE"
+EXPORTS
+SKSEPlugin_Query
+SKSEPlugin_Load
+KHAOS_Query
+KHAOS_SetHosted
+KHAOS_ToggleMenu
+KHAOS_IsMenuOpen
+KHAOS_RenderFrame
+KHAOS_ProcessWndProc

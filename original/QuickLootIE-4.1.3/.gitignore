@@ -1,0 +1,21 @@
+## Building
+CMakeUserPresets.json
+vcpkg_installed/
+build/
+dist/
+.vs*/
+.xmake/
+vsxmake*
+
+## Papyrus and friends
+.vscode
+.vscode.bak
+*.code-workspace
+*.ppj
+*.esp
+*.pex
+*.bat
+.release/
+
+## Flash
+swf/artifacts/

@@ -1,0 +1,41 @@
+#pragma once
+
+#include "ItemStack.h"
+
+namespace QuickLoot::Items
+{
+	struct QuickLootItemData
+	{
+		MandatoryField<RE::BSString> displayName;
+		OptionalField<uint32_t> textColor;
+
+		OptionalField<bool> enchanted;
+		OptionalField<bool> knownEnchanted;
+		OptionalField<bool> specialEnchanted;
+
+		OptionalField<bool> artifactNew;
+		OptionalField<bool> artifactFound;
+		OptionalField<bool> artifactDisplayed;
+
+		OptionalField<bool> compNeeded;
+		OptionalField<bool> compCollected;
+		OptionalField<bool> compDisplayable;
+		OptionalField<bool> compDisplayed;
+		OptionalField<bool> compOccupied;
+	};
+
+	class QuickLootItemStack : public ItemStack
+	{
+	public:
+		QuickLootItemStack(RE::InventoryEntryData* entry, RE::ObjectRefHandle container, RE::ObjectRefHandle dropRef = {});
+
+		[[nodiscard]] QuickLootItemData& GetQuickLootData() const { LoadData(); return _data; }
+		[[nodiscard]] RE::GFxValue& BuildDataObject(RE::GFxMovieView* view) const override;
+
+		void LoadData() const override;
+
+	private:
+		mutable QuickLootItemData _data;
+		mutable bool _dataInitialized = false;
+	};
+}

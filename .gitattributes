@@ -1,0 +1,16 @@
+* text=auto
+*.cpp text eol=crlf
+*.h text eol=crlf
+*.bat text eol=crlf
+*.vcxproj text eol=crlf
+*.def text eol=crlf
+*.swf binary
+*.fla binary
+*.psd binary
+*.png binary
+*.svg -text
+data/Interface/translations/*.txt -text
+original/** -text
+LICENSE -text
+EXCEPTIONS.md -text
+MIT -text

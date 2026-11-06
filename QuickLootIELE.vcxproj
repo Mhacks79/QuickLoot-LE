@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{6B2D3E4F-51A7-4C8E-9F10-0A1B2C3D4E5F}</ProjectGuid>
+    <ProjectName>QuickLootIELE</ProjectName>
+    <RootNamespace>QuickLootIELE</RootNamespace>
+    <Keyword>Win32Proj</Keyword>
+    <VcpkgEnabled>false</VcpkgEnabled>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="..\..\config\_Plugins.props" />
+  </ImportGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+    <UseDebugLibraries>true</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>17.0.35327.3</_ProjectFileVersion>
+    <OutDir>$(ProjectDir)Builds\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)Builds\$(Configuration)\Int\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <TargetName>QuickLootIELE</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <TargetName>QuickLootIELE</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <ExceptionHandling>Async</ExceptionHandling>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)ThirdParty\imgui;$(ProjectDir)..\..;$(ProjectDir)..\..\skse;$(ProjectDir)..\..\skse\skse;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_DEBUG;WIN32;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;IMGUI_IMPL_WIN32_DISABLE_GAMEPAD;IMGUI_DISABLE_WIN32_DEFAULT_CLIPBOARD_FUNCTIONS;IMGUI_DISABLE_WIN32_DEFAULT_IME_FUNCTIONS;IMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS;IMGUI_DISABLE_FILE_FUNCTIONS;RUNTIME;RUNTIME_VERSION=$(SeRuntimeVersion);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <ForcedIncludeFiles>common/IPrefix.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+    </ClCompile>
+    <Link>
+      <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <AdditionalDependencies>d3d9.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <ExceptionHandling>Async</ExceptionHandling>
+      <Optimization>MaxSpeed</Optimization>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)ThirdParty\imgui;$(ProjectDir)..\..;$(ProjectDir)..\..\skse;$(ProjectDir)..\..\skse\skse;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;IMGUI_IMPL_WIN32_DISABLE_GAMEPAD;IMGUI_DISABLE_WIN32_DEFAULT_CLIPBOARD_FUNCTIONS;IMGUI_DISABLE_WIN32_DEFAULT_IME_FUNCTIONS;IMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS;IMGUI_DISABLE_FILE_FUNCTIONS;RUNTIME;RUNTIME_VERSION=$(SeRuntimeVersion);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <ForcedIncludeFiles>common/IPrefix.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <!-- Trims the build directory out of __FILE__, which the SDK's assert
+           macros embed. Without it the shipped DLL carries absolute paths from
+           the machine it was built on. Set SdkTrimPrefix to the SDK root:
+           SdkTrimPrefix is the SDK root WITHOUT a trailing separator.
+             MSBuild FreerunLE.vcxproj /p:SdkTrimPrefix=<sdk root>\ ... -->
+      <AdditionalOptions>/d1trimfile:$(SdkTrimPrefix)\ %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <SubSystem>Windows</SubSystem>
+      <AdditionalDependencies>d3d9.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\common\common_vc9.vcxproj">
+      <Project>{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\skse\skse\SafeWrite.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="..\..\skse\skse\GameAPI.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="..\..\skse\skse\GameMenus.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="..\..\skse\skse\GameTypes.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="..\..\skse\skse\NiTypes.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="..\..\skse\skse\GameInput.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="..\..\skse\skse\InputMap.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="..\..\skse\skse\ScaleformAPI.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="..\..\skse\skse\ScaleformCallbacks.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="..\..\skse\skse\ScaleformMovie.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="..\..\skse\skse\GameRTTI.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="..\..\skse\skse\GameExtraData.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="..\..\skse\skse\GameBSExtraData.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="..\..\skse\skse\GameForms.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="..\..\skse\skse\GameObjects.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="..\..\skse\skse\GameReferences.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="..\..\skse\skse\GameData.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="..\..\skse\skse\GameSettings.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="..\..\skse\skse\GameEvents.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="..\..\skse\skse\GameFormComponents.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="..\..\skse\skse\HashUtil.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="..\..\skse\skse\Utilities.cpp"><DisableSpecificWarnings>4244;4305;4996;4267</DisableSpecificWarnings></ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="exports.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\Log.cpp" />
+    <ClCompile Include="src\Settings.cpp" />
+    <ClCompile Include="src\Engine.cpp" />
+    <ClCompile Include="src\Items.cpp" />
+    <ClCompile Include="src\Loot.cpp" />
+    <ClCompile Include="src\Input.cpp" />
+    <ClCompile Include="src\Guard.cpp" />
+    <ClCompile Include="src\Hooks.cpp" />
+    <ClCompile Include="src\LootMenu.cpp" />
+    <ClCompile Include="src\Khaos.cpp" />
+    <ClCompile Include="src\Verify.cpp" />
+    <ClCompile Include="ThirdParty\imgui\imgui.cpp"><ForcedIncludeFiles></ForcedIncludeFiles></ClCompile>
+    <ClCompile Include="ThirdParty\imgui\imgui_draw.cpp"><ForcedIncludeFiles></ForcedIncludeFiles></ClCompile>
+    <ClCompile Include="ThirdParty\imgui\imgui_tables.cpp"><ForcedIncludeFiles></ForcedIncludeFiles></ClCompile>
+    <ClCompile Include="ThirdParty\imgui\imgui_widgets.cpp"><ForcedIncludeFiles></ForcedIncludeFiles></ClCompile>
+    <ClCompile Include="ThirdParty\imgui\backends\imgui_impl_dx9.cpp"><ForcedIncludeFiles></ForcedIncludeFiles></ClCompile>
+    <ClCompile Include="ThirdParty\imgui\backends\imgui_impl_win32.cpp"><ForcedIncludeFiles></ForcedIncludeFiles></ClCompile>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
