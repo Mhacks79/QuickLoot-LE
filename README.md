@@ -82,7 +82,9 @@ QuickLoot IE LE is free software, released under the same terms as QuickLoot IE:
 
 - [LICENSE](LICENSE): GNU General Public License v3.0
 - [EXCEPTIONS.md](EXCEPTIONS.md): the two additional permissions under section 7
-- [MIT](MIT): the MIT notice of QuickLootRE, from which parts of the original code are derived
+- [MIT](MIT): the notice of QuickLootRE (ryan-rsm-mckenzie), which QuickLoot EE (ilian53) and
+  then QuickLoot IE were forked from. The MIT license requires this notice to travel with the
+  code derived from it; it does not change the license of this port, which is GPL-3.0.
 
 These files are copied unchanged from the original project. The modifications made by this
 port, with their date, are described in [CHANGES.md](CHANGES.md), and the third-party
@@ -93,7 +95,8 @@ components and their licenses are listed in [NOTICE.md](NOTICE.md).
 - **Miss Corruption**: QuickLoot IE, the original mod.
 - **Mhacks79**: the Legendary Edition port.
 
-The contributors to the original project are credited in
+QuickLoot IE descends from QuickLoot EE by ilian53 and QuickLootRE by ryan-rsm-mckenzie (see
+[NOTICE.md](NOTICE.md)). The contributors to the original project are credited in
 [original/QuickLootIE-4.1.3/README.md](original/QuickLootIE-4.1.3/README.md).
 
 ---

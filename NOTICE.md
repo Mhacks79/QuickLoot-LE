@@ -10,8 +10,21 @@ It is licensed under GPL-3.0-or-later WITH the Modding Exception AND the GPL-3.0
 Exception (with Corresponding Source), as is the original: [LICENSE](LICENSE),
 [EXCEPTIONS.md](EXCEPTIONS.md). These license files are reproduced unchanged.
 
-QuickLoot IE was originally based on QuickLootRE, Copyright (c) 2018 ryan-rsm-mckenzie,
-under the MIT license: [MIT](MIT), reproduced unchanged.
+## Lineage
+
+QuickLoot IE is itself the end of a chain of forks, and this port inherits all of it:
+
+1. **QuickLootRE** by ryan-rsm-mckenzie (published as SniffleMan), MIT license, 2018.
+2. **QuickLoot EE** by ilian53 (https://github.com/Eloquence4/QuickLootEE), a fork of
+   QuickLootRE, kept under the same MIT license and the same copyright line.
+3. **QuickLoot IE** by Miss Corruption and contributors, which relicensed its own work under
+   GPL-3.0-or-later with the two exceptions and kept the MIT notice for the code it took over.
+4. **QuickLoot IE LE** (this repository), a port of QuickLoot IE 4.1.3.
+
+The MIT license lets its code be reused in a GPL project on one condition: its copyright and
+permission notice must stay with every copy. That is the only reason the [MIT](MIT) file is
+here, reproduced unchanged. It is not the license of this port: QuickLoot IE LE as a whole is
+distributed under GPL-3.0-or-later with the exceptions above.
 
 This program comes with ABSOLUTELY NO WARRANTY, to the extent permitted by law (GPL-3.0,
 sections 15 and 16).
