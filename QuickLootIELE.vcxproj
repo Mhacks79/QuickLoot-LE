@@ -157,6 +157,7 @@
     <ClCompile Include="src\LootMenu.cpp" />
     <ClCompile Include="src\Khaos.cpp" />
     <ClCompile Include="src\Verify.cpp" />
+    <ClCompile Include="src\Translations.cpp" />
     <ClCompile Include="ThirdParty\imgui\imgui.cpp"><ForcedIncludeFiles></ForcedIncludeFiles></ClCompile>
     <ClCompile Include="ThirdParty\imgui\imgui_draw.cpp"><ForcedIncludeFiles></ForcedIncludeFiles></ClCompile>
     <ClCompile Include="ThirdParty\imgui\imgui_tables.cpp"><ForcedIncludeFiles></ForcedIncludeFiles></ClCompile>

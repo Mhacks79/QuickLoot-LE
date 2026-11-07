@@ -1,8 +1,8 @@
 # Changes made by this port
 
-QuickLoot IE LE 1.0.0 is a modified version of QuickLoot IE 4.1.3 by Miss Corruption
+QuickLoot IE LE is a modified version of QuickLoot IE 4.1.3 by Miss Corruption
 (https://github.com/MissCorruption/QuickLootIE), modified by Mhacks79 for Skyrim Legendary
-Edition on 2026-11-06. It is released under the same terms as the original:
+Edition (1.0.0 on 2026-11-06, 1.0.1 on 2026-11-07). It is released under the same terms as the original:
 GPL-3.0-or-later WITH the Modding Exception and the GPL-3.0 Linking Exception
 (LICENSE, EXCEPTIONS.md). The MIT notice of QuickLootRE (c) 2018 ryan-rsm-mckenzie is kept
 in MIT. The unmodified original source is in `original/QuickLootIE-4.1.3` (in a release archive, under `Source/`).
@@ -22,6 +22,7 @@ Address Library. Each file says at its top which original file it derives from.
 | Hooks.cpp/.h | Behaviors/ActivationPrompt.cpp, Behaviors/LockpickActivation.cpp, Observers/SneakStateObserver.cpp | LE call sites; sneak changes read from a HUD frame probe |
 | Settings.cpp/.h | Config/UserSettings.cpp, Config/SystemSettings.cpp, Config/Papyrus.h, QuickLootIEMCM.psc (defaults) | INI instead of MCM + JSON |
 | Khaos.cpp/.h | QuickLootIEMCM.psc (pages) | new: KHA-OS settings page |
+| Translations.cpp/.h | - | new: loads the QuickLootIE_<language>.txt files, which SKSE LE only reads for a plugin file this port does not have |
 | Engine.cpp/.h, Guard.cpp/.h, Verify.cpp/.h, Log.cpp/.h, Signatures.h, Version.h | - | new |
 
 ## Assets
@@ -41,3 +42,12 @@ Address Library. Each file says at its top which original file it derives from.
   included with permission (see NOTICE.txt next to them).
 - `ThirdParty/imgui`: Dear ImGui, MIT (LICENSE.txt).
 - SKSE 1.7.3 source by the SKSE team (skse_license.txt): a build dependency, shipped in each release archive under `Source/skse-le-sdk`.
+
+## 1.0.1 (2026-11-07)
+
+- Item and container names are handed to Scaleform the way the game's own menus hand them,
+  so Chinese, Korean and every other translation patch show exactly as in the inventory.
+- The QuickLootIE_<language>.txt translation files are now actually loaded (SKSE LE only
+  loads them for a plugin file of the same name, and this port has none). A language without
+  its own file falls back to English instead of showing "$qlie_" keys.
+- Key names on the KHA-OS Controls page show correctly on non-English keyboard layouts.

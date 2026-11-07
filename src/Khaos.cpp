@@ -158,8 +158,13 @@ namespace
 		}
 		LONG lParam = (LONG)((code & 0x7F) << 16);
 		if(code & 0x80) lParam |= (1 << 24);
-		char name[64] = { 0 };
-		if(GetKeyNameTextA(lParam, name, sizeof(name)) > 0) sprintf_s(out, size, "%s", name);
+		// ImGui draws UTF-8; the key name is asked for in UTF-16 so that a non-English keyboard
+		// layout (French, Russian, ...) does not come out as question marks.
+		wchar_t wname[64] = { 0 };
+		char name[192] = { 0 };
+		if(GetKeyNameTextW(lParam, wname, 64) > 0 &&
+			WideCharToMultiByte(CP_UTF8, 0, wname, -1, name, sizeof(name), 0, 0) > 0)
+			sprintf_s(out, size, "%s", name);
 		else sprintf_s(out, size, "key 0x%02X", code);
 	}
 

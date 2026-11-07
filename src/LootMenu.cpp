@@ -60,36 +60,17 @@ namespace
 	void SetNumber(GFxValue & obj, const char * name, double v)	{ GFxValue x; x.SetNumber(v); obj.SetMember(name, &x); }
 	void SetBool(GFxValue & obj, const char * name, bool v)		{ GFxValue x; x.SetBool(v); obj.SetMember(name, &x); }
 
-	// LE keeps its strings (item names, game settings) in the language's ANSI code page, not
-	// UTF-8: handed to Scaleform as they are, every accented letter shows as a box. They are
-	// converted to UTF-16 with the code page of the game's sLanguage and passed as wide strings.
-	UINT s_codePage = 0;
-
-	UINT GameCodePage()
+	// Game strings (item names, container names, game settings) are handed to Scaleform the way
+	// the game's own menus hand them: as an unmanaged char* converted by GFx inside SetMember
+	// (TESV 0x00920950). GFx reads it as UTF-8 when it is valid UTF-8 and, otherwise, byte by
+	// byte through the CRT (TESV never sets a locale, so "C"). Every language and every
+	// translation patch (Chinese, Korean, ...) therefore shows here exactly as in the inventory.
+	// CreateString would make a managed GFx string that skips that fallback (boxes for accents),
+	// and a code page picked from sLanguage cannot know what a fan translation stored.
+	// The value must be passed to SetMember before `s` goes away: the conversion copies it.
+	void MakeString(GFxMovieView *, GFxValue & out, const char * s)
 	{
-		if(s_codePage) return s_codePage;
-		UINT cp = 1252;
-		Setting * lang = GetINISetting("sLanguage:General");
-		const char * l = (QL::Engine::Ptr(lang) && lang->data.s && QL::Engine::Ptr(lang->data.s)) ? lang->data.s : "";
-		if(!_stricmp(l, "POLISH") || !_stricmp(l, "CZECH")) cp = 1250;
-		else if(!_stricmp(l, "RUSSIAN")) cp = 1251;
-		else if(!_stricmp(l, "JAPANESE")) cp = 932;
-		s_codePage = cp;
-		QL_LOG("game language '%s': strings read with code page %u", l, cp);
-		return cp;
-	}
-
-	void MakeString(GFxMovieView * view, GFxValue & out, const char * s)
-	{
-		if(!s) s = "";
-		bool ascii = true;
-		for(const char * p = s; *p; ++p) if((unsigned char)*p >= 0x80) { ascii = false; break; }
-		if(ascii) { view->CreateString(&out, s); return; }	// a managed copy: the source buffer may go away
-		wchar_t wide[1024];
-		const int n = MultiByteToWideChar(GameCodePage(), 0, s, -1, wide, 1024);
-		if(n <= 0) { view->CreateString(&out, s); return; }
-		wide[1023] = 0;
-		view->CreateWideString(&out, wide);
+		out.SetString(s ? s : "");
 	}
 
 	void SetString(GFxMovieView * view, GFxValue & obj, const char * name, const char * s)

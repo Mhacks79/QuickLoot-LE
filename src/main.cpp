@@ -34,6 +34,7 @@
 #include "Log.h"
 #include "Version.h"
 #include "Verify.h"
+#include "Translations.h"
 
 #include <string.h>
 
@@ -199,12 +200,16 @@ namespace
 		QL::Guard::SetCleanup(EmergencyRelease);
 	}
 
+	volatile LONG s_translated = 0;	// the translation files are added once per game session
+
 	void OnMessage(SKSEMessagingInterface::Message * msg)
 	{
 		if(!msg) return;
 		switch(msg->type)
 		{
 		case SKSEMessagingInterface::kMessage_DataLoaded:
+			if(InterlockedExchange(&s_translated, 1) == 0)
+				QL::Guard::Run("translations", QL::Translations::Import, QL::Guard::kGame);
 			if(!s_installed) QL::Guard::Run("data loaded", InstallBody, QL::Guard::kGame);
 			break;
 		case SKSEMessagingInterface::kMessage_PreLoadGame:
